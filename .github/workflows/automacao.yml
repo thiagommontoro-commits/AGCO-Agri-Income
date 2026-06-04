@@ -1,0 +1,39 @@
+name: Atualização Automática VBP
+
+on:
+  schedule:
+    # Roda toda segunda-feira às 09:00 (Horário UTC)
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Adiciona um botão no GitHub para você rodar manualmente quando quiser
+
+permissions:
+  contents: write # Permite que o robô salve os arquivos novos no seu repositório
+
+jobs:
+  rodar-robo:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Clonar o repositório
+        uses: actions/checkout@v3
+
+      - name: Configurar o Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Instalar as bibliotecas
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas requests beautifulsoup4 openpyxl jinja2
+
+      - name: Executar o Robô
+        run: python automacao_agro.py
+
+      - name: Salvar o HTML e as Bases no GitHub
+        run: |
+          git config --global user.name 'Robo AGCO GitHub Action'
+          git config --global user.email 'action@github.com'
+          git add outputs/ bases_historicas/
+          git commit -m "Atualização automática do Dashboard VBP" || exit 0
+          git push
