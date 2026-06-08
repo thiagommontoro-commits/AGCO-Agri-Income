@@ -56,9 +56,7 @@ class AgroScraper:
                 url_completa = urljoin(self.url, href) 
                 nome_arquivo = url_completa.split('/')[-1].split('?')[0].lower()
                 
-                # Filtra EXATAMENTE o que foi pedido: apenas VBP Geral (Brasil) e apenas 2026
-                if '2026' not in nome_arquivo:
-                    continue
+                # Filtra apenas planilhas gerais (Brasil)
                 if 'regional' in nome_arquivo:
                     continue
                 if 'vbp' not in nome_arquivo:
