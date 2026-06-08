@@ -343,10 +343,10 @@ class AgroETL:
             if pd.isna(val) or isinstance(val, str): return ''
             try:
                 v = float(val)
-                if v > 0.05: return 'color: #107C41; font-weight: 700;' # Verde corporativo
-                if v < -0.05: return 'color: #D83B01; font-weight: 700;' # Vermelho corporativo
+                if v > 0: return 'color: green; font-weight: bold;'
+                if v < 0: return 'color: red; font-weight: bold;'
             except: pass
-            return 'color: #383d41; background-color: #e2e3e5;' 
+            return ''
             
         def formata_br(x):
             if pd.isna(x): return "-"
@@ -355,22 +355,10 @@ class AgroETL:
                 return f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             except: return x
 
-        # Estilo profissional AGCO
-        estilo = [
-            {'selector': 'table', 'props': 'border-collapse: collapse; margin: 20px 0; font-family: "Segoe UI", sans-serif; font-size: 0.85em; width: 100%; border: 1px solid #e0e0e0;'},
-            {'selector': 'thead tr', 'props': 'background-color: #2c2c2c; color: #ffffff; text-align: right;'}, # Cinza chumbo/preto
-            {'selector': 'th', 'props': 'padding: 12px 10px; border: 1px solid #444; text-transform: uppercase; font-size: 0.9em; letter-spacing: 0.5px;'},
-            {'selector': 'td', 'props': 'padding: 10px 10px; border: 1px solid #e0e0e0; text-align: right; color: #333;'},
-            {'selector': 'th:first-child, td:first-child', 'props': 'text-align: left; font-weight: 600; background-color: #fafafa; border-right: 2px solid #ccc;'},
-            {'selector': 'th:last-child, td:last-child', 'props': 'text-align: left; font-size: 0.85em; max-width: 330px; white-space: normal; line-height: 1.4; border-left: 2px solid #ccc; background-color: #fcfcfc;'},
-            {'selector': 'tbody tr:hover', 'props': 'background-color: #f1f1f1;'},
-            {'selector': 'tbody tr:nth-of-type(even)', 'props': 'background-color: #fafafa;'}
-        ]
-
         html = (df_exibicao.style.map(formatar_cores, subset=[coluna_var] if coluna_var in df_exibicao.columns else [])
                 .format("{:.2f}%", subset=[coluna_var], na_rep="-")
                 .format(formata_br, subset=cols_numericas)
-                .set_table_styles(estilo).to_html(index=False))
+                .to_html(index=False))
         
         caminho_html = os.path.join(self.dir_relatorios, 'index.html')
         
@@ -380,84 +368,25 @@ class AgroETL:
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
-                <title>Dashboard VBP - Estilo Executivo</title>
+                <title>Relatório VBP</title>
                 <style>
-                    body {{
-                        background-color: #e9ecef;
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        margin: 0;
-                        padding: 30px;
-                        color: #333;
-                    }}
-                    .dashboard-container {{
-                        background-color: #ffffff;
-                        border-radius: 8px;
-                        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-                        padding: 30px 40px;
-                        border-top: 6px solid #BA0C2F; /* Vermelho AGCO */
-                        max-width: 1500px;
-                        margin: 0 auto;
-                    }}
-                    .header {{
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        border-bottom: 2px solid #f0f0f0;
-                        padding-bottom: 15px;
-                        margin-bottom: 25px;
-                    }}
-                    .title-area h2 {{
-                        color: #2c2c2c;
-                        margin: 0 0 5px 0;
-                        font-size: 1.8em;
-                        font-weight: 700;
-                    }}
-                    .title-area p {{
-                        color: #666;
-                        margin: 0;
-                        font-size: 0.95em;
-                    }}
-                    .logo-area {{
-                        text-align: right;
-                    }}
-                    .logo-text {{
-                        font-size: 26px;
-                        font-weight: 900;
-                        color: #2c2c2c;
-                        letter-spacing: 1.5px;
-                    }}
-                    .logo-text span {{
-                        color: #BA0C2F; /* Vermelho AGCO */
-                    }}
-                    .info-box {{
-                        background-color: #f8f9fa;
-                        border-left: 4px solid #4a4a4a;
-                        padding: 12px 15px;
-                        margin-bottom: 20px;
-                        font-size: 0.9em;
-                        color: #555;
-                    }}
+                    body {{ font-family: Arial, sans-serif; margin: 20px; color: #333; }}
+                    h2 {{ color: #005a9c; }}
+                    table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 15px; }}
+                    th, td {{ border: 1px solid #dddddd; padding: 8px; text-align: right; }}
+                    th {{ background-color: #f2f2f2; text-align: center; font-weight: bold; }}
+                    td:first-child, th:first-child {{ text-align: left; font-weight: bold; }}
+                    /* Mantém o texto da IA organizado para não esticar a tela infinitamente */
+                    td:last-child, th:last-child {{ text-align: left; max-width: 400px; white-space: normal; }}
+                    tr:nth-child(even) {{ background-color: #f9f9f9; }}
+                    tr:hover {{ background-color: #f1f1f1; }}
                 </style>
             </head>
             <body>
-                <div class="dashboard-container">
-                    <div class="header">
-                        <div class="title-area">
-                            <h2>Painel Analítico de Acompanhamento VBP</h2>
-                            <p>Evolução de Safra e Valor Bruto da Produção Nacional</p>
-                        </div>
-                        <div class="logo-area">
-                            <div class="logo-text">AG<span>CO</span></div>
-                        </div>
-                    </div>
-                    
-                    <div class="info-box">
-                        <strong>Última Extração de Dados:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')} <br>
-                        <strong>Comparativo de Projeções:</strong> Exibindo o histórico de 2024 e 2025, junto com a evolução de todas as revisões do Governo de 2026.
-                    </div>
-                    
-                    {html}
-                </div>
+                <h2>Relatório Consolidado - Valor Bruto da Produção (VBP)</h2>
+                <p><strong>Atualizado em:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                <hr>
+                {html}
             </body>
             </html>
             ''')
