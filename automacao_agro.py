@@ -341,6 +341,7 @@ class AgroETL:
             elif var < 0:
                 return f"↘️ {maquinas}"
             else:
+                return f"➡️ {maquinas}"
 
         df_exibicao['Impacto Máquinas Agrícolas'] = df_exibicao.apply(gerar_insight, axis=1)
 
