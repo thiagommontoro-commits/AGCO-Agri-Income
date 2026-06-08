@@ -541,6 +541,12 @@ if __name__ == "__main__":
     }
     URL = "https://www.gov.br/agricultura/pt-br/assuntos/politica-agricola/valor-bruto-da-producao-agropecuaria-vbp"
 
+    # Remove o arquivo antigo (se existir) para evitar confusão de visualização
+    arquivo_antigo = os.path.join(BASE_DIR, "outputs", "relatorio_agronegocio.html")
+    if os.path.exists(arquivo_antigo):
+        try: os.remove(arquivo_antigo)
+        except: pass
+
     scraper = AgroScraper(URL, PASTAS["down"])
     
     if scraper.extrair_planilhas():
