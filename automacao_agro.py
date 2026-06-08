@@ -478,15 +478,15 @@ class AgroETL:
                     .table-container {{ overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-light); }}
                     table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; background-color: #fff; }}
                     thead {{ background-color: var(--text-main); color: #ffffff; }}
-                    th {{ padding: 10px 8px; text-align: center; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px; white-space: nowrap; border: none; }}
+                    th {{ padding: 8px 6px; text-align: center; font-weight: 600; letter-spacing: 0px; text-transform: uppercase; font-size: 10.5px; white-space: nowrap; border: none; }}
                     th:first-child {{ text-align: left; position: sticky; left: 0; background-color: var(--text-main); z-index: 2; }}
-                    td {{ padding: 8px 8px; text-align: center; border-bottom: 1px solid var(--border-light); color: #495057; font-variant-numeric: tabular-nums; border-top: none; border-left: none; border-right: none; font-size: 12px; }}
-                    td:first-child {{ text-align: left; font-weight: 600; color: var(--text-main); position: sticky; left: 0; background-color: #fff; border-right: 2px solid var(--border-light); z-index: 1; font-size: 12px; }}
+                    td {{ padding: 6px 6px; text-align: center; border-bottom: 1px solid var(--border-light); color: #495057; font-variant-numeric: tabular-nums; border-top: none; border-left: none; border-right: none; font-size: 11.5px; }}
+                    td:first-child {{ text-align: left; font-weight: 600; color: var(--text-main); position: sticky; left: 0; background-color: #fff; border-right: 2px solid var(--border-light); z-index: 1; font-size: 11.5px; }}
                     tbody tr:hover td {{ background-color: #f8f9fa; }}
                     
                     /* Coluna IA - Layout Moderno com Letra Preta e Fundo Claro */
-                    thead th:last-child {{ text-align: left; max-width: 160px; background-color: var(--text-main); }}
-                    tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.3; font-size: 11px; color: #000000; font-weight: 700; white-space: normal; background-color: #f4f7f6; border-left: 2px solid var(--border-light); }}
+                    thead th:last-child {{ text-align: left; max-width: 145px; background-color: var(--text-main); }}
+                    tbody td:last-child {{ text-align: left; max-width: 145px; line-height: 1.25; font-size: 10.5px; color: #000000; font-weight: 700; white-space: normal; background-color: #f4f7f6; border-left: 2px solid var(--border-light); }}
                     
                     .action-buttons {{ margin-top: 25px; text-align: right; }}
                     .btn-excel {{ background: #107C41; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }}
