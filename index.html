@@ -1,417 +1,379 @@
-import os
-import glob
-import requests
-import logging
-import unicodedata
-import re
-from datetime import datetime
-from urllib.parse import urljoin
-from bs4 import BeautifulSoup
-import pandas as pd
 
-# ==========================================
-# 1. CONFIGURAÇÃO DE CAMINHOS E LOGS
-# ==========================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-logging.basicConfig(
-    level=logging.INFO, 
-    format='%(asctime)s - [ %(levelname)s ] - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(os.path.join(BASE_DIR, 'automacao_agro.log'), mode='a', encoding='utf-8')
-    ]
-)
-
-# ==========================================
-# 2. MÓDULO DE EXTRAÇÃO (WEB SCRAPING)
-# ==========================================
-class AgroScraper:
-    def __init__(self, url: str, dir_downloads: str):
-        self.url = url
-        self.dir_downloads = dir_downloads
-        os.makedirs(self.dir_downloads, exist_ok=True)
-
-    def extrair_planilhas(self) -> bool:
-        logging.info("--- INICIANDO WEB SCRAPING ---")
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        
-        try:
-            response = requests.get(self.url, headers=headers, timeout=20)
-            response.raise_for_status()
-        except Exception as e:
-            logging.error(f"Falha de conexão com o site: {e}")
-            return False
-
-        soup = BeautifulSoup(response.content, 'html.parser')
-        links = soup.find_all('a', href=True)
-        planilhas_baixadas = 0
-
-        for arquivo_antigo in glob.glob(os.path.join(self.dir_downloads, "*.xls*")):
-            os.remove(arquivo_antigo)
-
-        for link in links:
-            href = link['href']
-            if href.endswith('.xlsx') or href.endswith('.xls'):
-                url_completa = urljoin(self.url, href) 
-                nome_arquivo = url_completa.split('/')[-1].split('?')[0].lower()
-                
-                # Foca EXCLUSIVAMENTE nos dados do VBP Completo / VBP Brasil
-                if 'completo' not in nome_arquivo and 'vbpbrasil' not in nome_arquivo:
-                    continue
-                
-                # Filtra apenas os arquivos do ano atual em diante (ignora anos anteriores)
-                ano_atual = datetime.now().year
-                match_ano = re.search(r'\d{4}', nome_arquivo)
-                if match_ano:
-                    ano_arquivo = int(match_ano.group())
-                    if ano_arquivo < ano_atual:
-                        continue
-
-                caminho_salvar = os.path.join(self.dir_downloads, nome_arquivo)
-                
-                logging.info(f"Baixando: {nome_arquivo}...")
-                try:
-                    file_response = requests.get(url_completa, headers=headers, stream=True, timeout=30)
-                    file_response.raise_for_status()
-                    with open(caminho_salvar, 'wb') as arquivo_excel:
-                        for chunk in file_response.iter_content(chunk_size=8192):
-                            arquivo_excel.write(chunk)
-                    planilhas_baixadas += 1
-                except Exception as e:
-                    logging.error(f"Erro ao baixar {nome_arquivo}: {e}")
-
-        return planilhas_baixadas > 0
-
-    def padronizar_nomes_arquivos(self):
-        arquivos = glob.glob(os.path.join(self.dir_downloads, "*.xls*"))
-        for arquivo in arquivos:
-            nome_base = os.path.basename(arquivo).lower()
-            if 'vbp' in nome_base or 'valor' in nome_base:
-                novo_nome = os.path.join(self.dir_downloads, f"tratado_vbp_{nome_base}")
-            elif 'producao' in nome_base or 'area' in nome_base or 'quantidade' in nome_base:
-                novo_nome = os.path.join(self.dir_downloads, f"tratado_volume_{nome_base}")
-            else:
-                novo_nome = os.path.join(self.dir_downloads, f"tratado_vbp_{nome_base}")
-                
-            if arquivo != novo_nome:
-                os.rename(arquivo, novo_nome)
-
-# ==========================================
-# 3. MÓDULO DE TRATAMENTO DE DADOS E HTML (ETL)
-# ==========================================
-class AgroETL:
-    def __init__(self, dir_downloads: str, dir_consolidados: str, dir_relatorios: str):
-        self.dir_downloads = dir_downloads
-        self.dir_consolidados = dir_consolidados
-        self.dir_relatorios = dir_relatorios
-        for diretorio in [self.dir_downloads, self.dir_consolidados, self.dir_relatorios]:
-            os.makedirs(diretorio, exist_ok=True)
-
-    def _limpar_colunas(self, df: pd.DataFrame) -> pd.DataFrame:
-        if df.empty: return df
-        colunas_limpas = []
-        for col in df.columns:
-            col_str = str(col).strip().lower()
-            col_str = re.sub(r'\.0$', '', col_str)
-            col_str = ''.join(c for c in unicodedata.normalize('NFD', col_str) if unicodedata.category(c) != 'Mn')
-            col_str = col_str.replace(' ', '_').replace('.', '').replace('\n', '')
-            colunas_limpas.append(col_str)
-        df.columns = colunas_limpas
-        return df
-
-    def extrair_e_empilhar(self, padrao_nome: str) -> pd.DataFrame:
-        arquivos = sorted(glob.glob(os.path.join(self.dir_downloads, padrao_nome)))
-        lista_dfs = []
-        if not arquivos:
-            logging.warning(f"Nenhum arquivo encontrado com o padrão: {padrao_nome}")
-            
-        for arquivo in arquivos:
-            nome_arquivo = os.path.basename(arquivo)
-            
-            # Extrai ano e mês do nome do arquivo para formatar a versão (ex: 2026 - 01)
-            match_data = re.search(r'(\d{4})(\d{2})', nome_arquivo)
-            if match_data:
-                versao_formatada = f"{match_data.group(1)} - {match_data.group(2)}"
-            else:
-                versao_formatada = nome_arquivo
-                
-            logging.info(f"Lendo e empilhando planilha: {nome_arquivo} (Versão: {versao_formatada})...")
-            try:
-                # Lê todas as abas ignorando o cabeçalho automático (header=None) para não perder o topo
-                dicionario_abas = pd.read_excel(arquivo, sheet_name=None, header=None)
-                df_maior = pd.DataFrame()
-                
-                for nome_aba, df_aba in dicionario_abas.items():
-                    if len(df_aba) > len(df_maior):
-                        df_maior = df_aba
-                        
-                if not df_maior.empty:
-                    # Identifica a linha do cabeçalho verdadeiro (ex: que começa com os anos 1989, 1990...)
-                    idx_cabecalho = 0
-                    for idx, row in df_maior.iterrows():
-                        valores_linha = row.astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
-                        if '1989' in valores_linha.values or valores_linha.str.match(r'^(19|20)\d{2}$').sum() > 3:
-                            idx_cabecalho = idx
-                            break
-                            
-                    # Define o cabeçalho real e descarta o texto solto das primeiras linhas
-                    df_maior.columns = df_maior.iloc[idx_cabecalho]
-                    df_maior.columns.name = None
-                    df_maior = df_maior.iloc[idx_cabecalho + 1:].reset_index(drop=True)
-
-                    # Remove linhas 100% vazias para organizar a base
-                    df_maior = df_maior.dropna(how='all', axis=0).dropna(how='all', axis=1).reset_index(drop=True)
-
-                    # A Tabela 2 (Preços Correntes) empilhada repete o 1º item da Tabela 1 (ex: "LAVOURAS").
-                    # Cortamos o arquivo exatamente onde essa repetição acontece.
-                    if not df_maior.empty:
-                        col_zero = df_maior.columns[0]
-                        valores_validos = df_maior[col_zero].dropna()
-                        if not valores_validos.empty:
-                            primeiro_item = valores_validos.iloc[0]
-                            repeticoes = df_maior[df_maior[col_zero] == primeiro_item].index
-                            if len(repeticoes) > 1:
-                                df_maior = df_maior.loc[:repeticoes[1]-1]
-
-                    df_limpo = self._limpar_colunas(df_maior)
-                    
-                    if not df_limpo.empty and len(df_limpo.columns) > 0:
-                        primeira_col = df_limpo.columns[0]
-                        
-                        # Corta a tabela descartando o rodapé ao encontrar palavras-chave
-                        termos_rodape = 'fonte|nota|elaboração|elaboracao|atualizado'
-                        mascara_rodape = df_limpo[primeira_col].astype(str).str.lower().str.contains(termos_rodape, na=False)
-                        if mascara_rodape.any():
-                            idx_rodape = mascara_rodape.idxmax()
-                            df_limpo = df_limpo.loc[:idx_rodape].iloc[:-1]
-
-                        # Remove duplicatas normalizando o texto (sem acentos ou espaços soltos)
-                        df_limpo['chave_temp'] = df_limpo[primeira_col].astype(str).str.strip().str.lower()
-                        df_limpo['chave_temp'] = df_limpo['chave_temp'].apply(
-                            lambda x: ''.join(c for c in unicodedata.normalize('NFD', x) if unicodedata.category(c) != 'Mn')
-                        )
-                        df_limpo = df_limpo.drop_duplicates(subset=['chave_temp'], keep='first').drop(columns=['chave_temp'])
-                        
-                        # Adiciona uma coluna na primeira posição para identificar a versão/origem do dado
-                        df_limpo.insert(0, 'versao_arquivo', versao_formatada)
-                        
-                    lista_dfs.append(df_limpo)
-            except Exception as e:
-                logging.error(f"Erro ao ler planilha {arquivo}: {e}")
-        return pd.concat(lista_dfs, ignore_index=True) if lista_dfs else pd.DataFrame()
-
-    def cruzar_e_salvar_versao(self) -> bool:
-        logging.info("--- INICIANDO PROCESSAMENTO DE DADOS ---")
-        df_volume = self.extrair_e_empilhar("*_volume_*.xls*")
-        df_valor = self.extrair_e_empilhar("*_vbp_*.xls*")
-        
-        if df_valor.empty and df_volume.empty:
-            logging.error("ERRO: As tabelas estão vazias. Nenhum arquivo consolidado será gerado.")
-            return False
-
-        chaves = ['estado', 'cultura']
-        if not df_valor.empty and not df_volume.empty:
-            if all(ch in df_volume.columns for ch in chaves) and all(ch in df_valor.columns for ch in chaves):
-                df_consolidado = pd.merge(df_volume, df_valor, on=chaves, how='inner')
-            else:
-                df_consolidado = pd.concat([df_volume, df_valor], ignore_index=True)
-        else:
-            df_consolidado = df_valor if not df_valor.empty else df_volume
-
-        # Preenche valores vazios de forma segura (evita erro com texto no Pandas)
-        for col in df_consolidado.columns:
-            try:
-                df_consolidado[col] = df_consolidado[col].fillna(0)
-            except TypeError:
-                df_consolidado[col] = df_consolidado[col].fillna("")
-                
-        nome_arquivo = f"base_consolidada_{datetime.now().strftime('%m-%Y')}.xlsx"
-        caminho_saida = os.path.join(self.dir_consolidados, nome_arquivo)
-        df_consolidado.to_excel(caminho_saida, index=False)
-        logging.info(f"Consolidação salva: {nome_arquivo}")
-        return True
-
-    def gerar_relatorio_html(self):
-        logging.info("--- GERANDO DASHBOARD VISUAL (HTML) ---")
-        arquivos = sorted(glob.glob(os.path.join(self.dir_consolidados, "base_consolidada_*.xlsx")), key=os.path.getmtime)
-        if not arquivos:
-            logging.warning("Nenhum arquivo consolidado encontrado.")
-            return False
-        
-        caminho_base = arquivos[-1]
-        df = pd.read_excel(caminho_base)
-
-        if 'versao_arquivo' not in df.columns:
-            logging.error("A coluna 'versao_arquivo' não existe. Rode a consolidação novamente.")
-            return False
-
-        # Padroniza as colunas de anos para string, remove '.0' e asteriscos (*) que o governo usa para projeções
-        novas_colunas = []
-        for i, c in enumerate(df.columns):
-            if i > 0: # Ignora a coluna 'versao_arquivo'
-                novas_colunas.append(re.sub(r'\.0$', '', str(c)).replace('*', '').strip())
-            else:
-                novas_colunas.append(c)
-        df.columns = novas_colunas
-
-        versoes = sorted(df['versao_arquivo'].dropna().unique())
-        if not versoes:
-            return False
-            
-        versao_atual = versoes[-1]
-        
-        logging.info(f"Montando painel com o histórico de versões até: {versao_atual}...")
-
-        df_atual = df[df['versao_arquivo'] == versao_atual].copy()
-
-        # A primeira coluna é 'versao_arquivo', a segunda deve ser o Produto/Cultura
-        col_produto_str = df_atual.columns[1]
-
-        # Inicia a tabela de exibição com as colunas de Produtos, 2024 e 2025
-        cols_base = [col_produto_str]
-        for ano in ['2024', '2025']:
-            if ano in df_atual.columns: cols_base.append(ano)
-                
-        df_exibicao = df_atual[cols_base].copy()
-
-        # Loop dinâmico: Extrai a projeção de 2026 de TODAS as versões (Jan, Fev, Mar...) e as coloca lado a lado
-        colunas_2026 = []
-        for v in versoes:
-            df_v = df[df['versao_arquivo'] == v].copy()
-            if '2026' in df_v.columns:
-                nome_coluna_mes = f'2026 ({v})'
-                df_v_2026 = df_v[[col_produto_str, '2026']].rename(columns={'2026': nome_coluna_mes})
-                df_exibicao = pd.merge(df_exibicao, df_v_2026, on=col_produto_str, how='left')
-                colunas_2026.append(nome_coluna_mes)
-
-        df_exibicao = df_exibicao.rename(columns={col_produto_str: 'Produto / Cultura'})
-
-        # Calcula a variação de 2026 (Sempre comparando a última com a penúltima disponível)
-        coluna_var = 'Variação vs Mês Anterior (%)'
-        if len(colunas_2026) >= 2:
-            col_atual = colunas_2026[-1]
-            col_ant = colunas_2026[-2]
-            
-            df_exibicao[col_atual] = pd.to_numeric(df_exibicao[col_atual], errors='coerce').fillna(0)
-            df_exibicao[col_ant] = pd.to_numeric(df_exibicao[col_ant], errors='coerce').fillna(0)
-            df_exibicao[coluna_var] = ((df_exibicao[col_atual] - df_exibicao[col_ant]) / df_exibicao[col_ant].replace(0, pd.NA)) * 100
-        else:
-            df_exibicao[coluna_var] = pd.NA
-
-        # Inserção da coluna de Insights de Maquinário (Motor Heurístico / IA)
-        def gerar_insight(row):
-            cultura = str(row['Produto / Cultura']).lower()
-            var = row[coluna_var]
-            
-            if pd.isna(var): return "-"
-            
-            maquinas = ""
-            if any(c in cultura for c in ['soja', 'milho', 'trigo', 'arroz', 'algodão', 'algodao', 'sorgo']):
-                maquinas = "Tratores de Alta Potência (240-339HP e >340HP), Colheitadeiras, Pulverizadores e Plantadeiras"
-            elif any(c in cultura for c in ['café', 'cafe']):
-                maquinas = "Tratores Estreitos/Especiais (50-79HP e 80-119HP) e Colheitadeiras de Café"
-            elif 'cana' in cultura:
-                maquinas = "Tratores Pesados (170-239HP e 240-339HP) para transbordo e Colheitadeiras de Cana"
-            elif any(c in cultura for c in ['laranja', 'uva', 'maçã', 'maca', 'banana', 'cacau']):
-                maquinas = "Tratores Leves/Fruteiros (0-49HP e 50-79HP)"
-            elif any(c in cultura for c in ['feijão', 'feijao', 'batata', 'cebola', 'tomate', 'mandioca', 'amendoim']):
-                maquinas = "Tratores Médios (80-119HP e 120-169HP) e Implementos Menores"
-            else:
-                maquinas = "Tratores Multiuso (80-119HP e 120-169HP)"
-                
-            if var > 2:
-                return f"📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de {maquinas}."
-            elif var > 0:
-                return f"↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de {maquinas}."
-            elif var < -2:
-                return f"🔴 ALERTA: Queda severa retrai financiamentos. Venda de {maquinas} deve cair; focar em Pós-Venda."
-            elif var < 0:
-                return f"↘️ CAUTELA: Leve retração faz o produtor segurar caixa. Giro de {maquinas} pode ficar mais lento."
-            else:
-                return f"➡️ ESTABILIDADE: Fluxo normal de reposição para {maquinas}."
-
-        df_exibicao['Impacto em Maquinário (IA)'] = df_exibicao.apply(gerar_insight, axis=1)
-
-        # Limpeza fina: Garante que os números são numéricos e exclui culturas 100% zeradas para não poluir o painel
-        cols_numericas = [c for c in df_exibicao.columns if c not in ['Produto / Cultura', coluna_var, 'Impacto em Maquinário (IA)']]
-        for col in cols_numericas:
-            df_exibicao[col] = pd.to_numeric(df_exibicao[col], errors='coerce').fillna(0)
-        df_exibicao = df_exibicao[(df_exibicao[cols_numericas] != 0).any(axis=1)]
-
-        def formatar_cores(val):
-            if pd.isna(val) or isinstance(val, str): return ''
-            try:
-                v = float(val)
-                if v > 0: return 'color: green; font-weight: bold;'
-                if v < 0: return 'color: red; font-weight: bold;'
-            except: pass
-            return ''
-            
-        def formata_br(x):
-            if pd.isna(x): return "-"
-            try: 
-                if float(x) == 0: return "-"
-                return f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            except: return x
-
-        html = (df_exibicao.style.map(formatar_cores, subset=[coluna_var] if coluna_var in df_exibicao.columns else [])
-                .format("{:.2f}%", subset=[coluna_var], na_rep="-")
-                .format(formata_br, subset=cols_numericas)
-                .to_html(index=False))
-        
-        caminho_html = os.path.join(self.dir_relatorios, 'index.html')
-        
-        with open(caminho_html, 'w', encoding='utf-8') as f:
-            f.write(f'''
             <!DOCTYPE html>
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
                 <title>Relatório VBP</title>
                 <style>
-                    body {{ font-family: Arial, sans-serif; margin: 20px; color: #333; }}
-                    h2 {{ color: #005a9c; }}
-                    table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 15px; }}
-                    th, td {{ border: 1px solid #dddddd; padding: 8px; text-align: right; }}
-                    th {{ background-color: #f2f2f2; text-align: center; font-weight: bold; }}
-                    td:first-child, th:first-child {{ text-align: left; font-weight: bold; }}
+                    body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+                    h2 { color: #005a9c; }
+                    table { border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 15px; }
+                    th, td { border: 1px solid #dddddd; padding: 8px; text-align: right; }
+                    th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
+                    td:first-child, th:first-child { text-align: left; font-weight: bold; }
                     /* Mantém o texto da IA organizado para não esticar a tela infinitamente */
-                    td:last-child, th:last-child {{ text-align: left; max-width: 400px; white-space: normal; }}
-                    tr:nth-child(even) {{ background-color: #f9f9f9; }}
-                    tr:hover {{ background-color: #f1f1f1; }}
+                    td:last-child, th:last-child { text-align: left; max-width: 400px; white-space: normal; }
+                    tr:nth-child(even) { background-color: #f9f9f9; }
+                    tr:hover { background-color: #f1f1f1; }
                 </style>
             </head>
             <body>
                 <h2>Relatório Consolidado - Valor Bruto da Produção (VBP)</h2>
-                <p><strong>Atualizado em:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                <p><strong>Atualizado em:</strong> 08/06/2026 13:36</p>
                 <hr>
-                {html}
+                <style type="text/css">
+#T_7e382_row0_col7, #T_7e382_row1_col7, #T_7e382_row2_col7, #T_7e382_row3_col7, #T_7e382_row4_col7, #T_7e382_row8_col7, #T_7e382_row9_col7, #T_7e382_row10_col7, #T_7e382_row11_col7, #T_7e382_row12_col7, #T_7e382_row14_col7, #T_7e382_row15_col7, #T_7e382_row16_col7, #T_7e382_row17_col7, #T_7e382_row18_col7, #T_7e382_row19_col7, #T_7e382_row20_col7, #T_7e382_row22_col7, #T_7e382_row23_col7, #T_7e382_row24_col7, #T_7e382_row25_col7, #T_7e382_row26_col7 {
+  color: green;
+  font-weight: bold;
+}
+#T_7e382_row5_col7, #T_7e382_row6_col7, #T_7e382_row7_col7, #T_7e382_row13_col7, #T_7e382_row21_col7 {
+  color: red;
+  font-weight: bold;
+}
+</style>
+<table id="T_7e382">
+  <thead>
+    <tr>
+      <th class="blank level0" >&nbsp;</th>
+      <th id="T_7e382_level0_col0" class="col_heading level0 col0" >Produto / Cultura</th>
+      <th id="T_7e382_level0_col1" class="col_heading level0 col1" >2024</th>
+      <th id="T_7e382_level0_col2" class="col_heading level0 col2" >2025</th>
+      <th id="T_7e382_level0_col3" class="col_heading level0 col3" >2026 (2026 - 01)</th>
+      <th id="T_7e382_level0_col4" class="col_heading level0 col4" >2026 (2026 - 02)</th>
+      <th id="T_7e382_level0_col5" class="col_heading level0 col5" >2026 (2026 - 03)</th>
+      <th id="T_7e382_level0_col6" class="col_heading level0 col6" >2026 (2026 - 04)</th>
+      <th id="T_7e382_level0_col7" class="col_heading level0 col7" >Variação vs Mês Anterior (%)</th>
+      <th id="T_7e382_level0_col8" class="col_heading level0 col8" >Impacto em Maquinário (IA)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th id="T_7e382_level0_row0" class="row_heading level0 row0" >0</th>
+      <td id="T_7e382_row0_col0" class="data row0 col0" >Algodão</td>
+      <td id="T_7e382_row0_col1" class="data row0 col1" >34,93</td>
+      <td id="T_7e382_row0_col2" class="data row0 col2" >36,62</td>
+      <td id="T_7e382_row0_col3" class="data row0 col3" >30,34</td>
+      <td id="T_7e382_row0_col4" class="data row0 col4" >29,58</td>
+      <td id="T_7e382_row0_col5" class="data row0 col5" >30,19</td>
+      <td id="T_7e382_row0_col6" class="data row0 col6" >32,34</td>
+      <td id="T_7e382_row0_col7" class="data row0 col7" >7.11%</td>
+      <td id="T_7e382_row0_col8" class="data row0 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores de Alta Potência (240-339HP e >340HP), Colheitadeiras, Pulverizadores e Plantadeiras.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row1" class="row_heading level0 row1" >1</th>
+      <td id="T_7e382_row1_col0" class="data row1 col0" >Amendoim</td>
+      <td id="T_7e382_row1_col1" class="data row1 col1" >4,49</td>
+      <td id="T_7e382_row1_col2" class="data row1 col2" >6,38</td>
+      <td id="T_7e382_row1_col3" class="data row1 col3" >5,32</td>
+      <td id="T_7e382_row1_col4" class="data row1 col4" >5,36</td>
+      <td id="T_7e382_row1_col5" class="data row1 col5" >5,39</td>
+      <td id="T_7e382_row1_col6" class="data row1 col6" >5,52</td>
+      <td id="T_7e382_row1_col7" class="data row1 col7" >2.34%</td>
+      <td id="T_7e382_row1_col8" class="data row1 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Médios (80-119HP e 120-169HP) e Implementos Menores.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row2" class="row_heading level0 row2" >2</th>
+      <td id="T_7e382_row2_col0" class="data row2 col0" >Arroz</td>
+      <td id="T_7e382_row2_col1" class="data row2 col1" >25,58</td>
+      <td id="T_7e382_row2_col2" class="data row2 col2" >21,38</td>
+      <td id="T_7e382_row2_col3" class="data row2 col3" >14,47</td>
+      <td id="T_7e382_row2_col4" class="data row2 col4" >14,36</td>
+      <td id="T_7e382_row2_col5" class="data row2 col5" >14,39</td>
+      <td id="T_7e382_row2_col6" class="data row2 col6" >14,87</td>
+      <td id="T_7e382_row2_col7" class="data row2 col7" >3.37%</td>
+      <td id="T_7e382_row2_col8" class="data row2 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores de Alta Potência (240-339HP e >340HP), Colheitadeiras, Pulverizadores e Plantadeiras.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row3" class="row_heading level0 row3" >3</th>
+      <td id="T_7e382_row3_col0" class="data row3 col0" >Banana</td>
+      <td id="T_7e382_row3_col1" class="data row3 col1" >22,75</td>
+      <td id="T_7e382_row3_col2" class="data row3 col2" >21,88</td>
+      <td id="T_7e382_row3_col3" class="data row3 col3" >22,28</td>
+      <td id="T_7e382_row3_col4" class="data row3 col4" >21,60</td>
+      <td id="T_7e382_row3_col5" class="data row3 col5" >22,33</td>
+      <td id="T_7e382_row3_col6" class="data row3 col6" >22,75</td>
+      <td id="T_7e382_row3_col7" class="data row3 col7" >1.89%</td>
+      <td id="T_7e382_row3_col8" class="data row3 col8" >↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de Tratores Leves/Fruteiros (0-49HP e 50-79HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row4" class="row_heading level0 row4" >4</th>
+      <td id="T_7e382_row4_col0" class="data row4 col0" >Batata - inglesa</td>
+      <td id="T_7e382_row4_col1" class="data row4 col1" >19,98</td>
+      <td id="T_7e382_row4_col2" class="data row4 col2" >9,26</td>
+      <td id="T_7e382_row4_col3" class="data row4 col3" >8,29</td>
+      <td id="T_7e382_row4_col4" class="data row4 col4" >7,86</td>
+      <td id="T_7e382_row4_col5" class="data row4 col5" >8,60</td>
+      <td id="T_7e382_row4_col6" class="data row4 col6" >9,32</td>
+      <td id="T_7e382_row4_col7" class="data row4 col7" >8.36%</td>
+      <td id="T_7e382_row4_col8" class="data row4 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Médios (80-119HP e 120-169HP) e Implementos Menores.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row5" class="row_heading level0 row5" >5</th>
+      <td id="T_7e382_row5_col0" class="data row5 col0" >Cacau</td>
+      <td id="T_7e382_row5_col1" class="data row5 col1" >11,36</td>
+      <td id="T_7e382_row5_col2" class="data row5 col2" >11,89</td>
+      <td id="T_7e382_row5_col3" class="data row5 col3" >7,68</td>
+      <td id="T_7e382_row5_col4" class="data row5 col4" >6,53</td>
+      <td id="T_7e382_row5_col5" class="data row5 col5" >5,57</td>
+      <td id="T_7e382_row5_col6" class="data row5 col6" >5,39</td>
+      <td id="T_7e382_row5_col7" class="data row5 col7" >-3.30%</td>
+      <td id="T_7e382_row5_col8" class="data row5 col8" >🔴 ALERTA: Queda severa retrai financiamentos. Venda de Tratores Leves/Fruteiros (0-49HP e 50-79HP) deve cair; focar em Pós-Venda.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row6" class="row_heading level0 row6" >6</th>
+      <td id="T_7e382_row6_col0" class="data row6 col0" >Café</td>
+      <td id="T_7e382_row6_col1" class="data row6 col1" >80,94</td>
+      <td id="T_7e382_row6_col2" class="data row6 col2" >117,95</td>
+      <td id="T_7e382_row6_col3" class="data row6 col3" >116,27</td>
+      <td id="T_7e382_row6_col4" class="data row6 col4" >112,03</td>
+      <td id="T_7e382_row6_col5" class="data row6 col5" >111,56</td>
+      <td id="T_7e382_row6_col6" class="data row6 col6" >111,43</td>
+      <td id="T_7e382_row6_col7" class="data row6 col7" >-0.12%</td>
+      <td id="T_7e382_row6_col8" class="data row6 col8" >↘️ CAUTELA: Leve retração faz o produtor segurar caixa. Giro de Tratores Estreitos/Especiais (50-79HP e 80-119HP) e Colheitadeiras de Café pode ficar mais lento.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row7" class="row_heading level0 row7" >7</th>
+      <td id="T_7e382_row7_col0" class="data row7 col0" >   Café arábica</td>
+      <td id="T_7e382_row7_col1" class="data row7 col1" >58,61</td>
+      <td id="T_7e382_row7_col2" class="data row7 col2" >85,26</td>
+      <td id="T_7e382_row7_col3" class="data row7 col3" >90,63</td>
+      <td id="T_7e382_row7_col4" class="data row7 col4" >88,52</td>
+      <td id="T_7e382_row7_col5" class="data row7 col5" >87,77</td>
+      <td id="T_7e382_row7_col6" class="data row7 col6" >87,13</td>
+      <td id="T_7e382_row7_col7" class="data row7 col7" >-0.73%</td>
+      <td id="T_7e382_row7_col8" class="data row7 col8" >↘️ CAUTELA: Leve retração faz o produtor segurar caixa. Giro de Tratores Estreitos/Especiais (50-79HP e 80-119HP) e Colheitadeiras de Café pode ficar mais lento.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row8" class="row_heading level0 row8" >8</th>
+      <td id="T_7e382_row8_col0" class="data row8 col0" >   Café conilon</td>
+      <td id="T_7e382_row8_col1" class="data row8 col1" >22,33</td>
+      <td id="T_7e382_row8_col2" class="data row8 col2" >32,69</td>
+      <td id="T_7e382_row8_col3" class="data row8 col3" >25,64</td>
+      <td id="T_7e382_row8_col4" class="data row8 col4" >23,51</td>
+      <td id="T_7e382_row8_col5" class="data row8 col5" >23,79</td>
+      <td id="T_7e382_row8_col6" class="data row8 col6" >24,30</td>
+      <td id="T_7e382_row8_col7" class="data row8 col7" >2.15%</td>
+      <td id="T_7e382_row8_col8" class="data row8 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Estreitos/Especiais (50-79HP e 80-119HP) e Colheitadeiras de Café.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row9" class="row_heading level0 row9" >9</th>
+      <td id="T_7e382_row9_col0" class="data row9 col0" >Cana-de-açúcar</td>
+      <td id="T_7e382_row9_col1" class="data row9 col1" >123,51</td>
+      <td id="T_7e382_row9_col2" class="data row9 col2" >120,14</td>
+      <td id="T_7e382_row9_col3" class="data row9 col3" >103,90</td>
+      <td id="T_7e382_row9_col4" class="data row9 col4" >106,53</td>
+      <td id="T_7e382_row9_col5" class="data row9 col5" >108,91</td>
+      <td id="T_7e382_row9_col6" class="data row9 col6" >111,10</td>
+      <td id="T_7e382_row9_col7" class="data row9 col7" >2.00%</td>
+      <td id="T_7e382_row9_col8" class="data row9 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Pesados (170-239HP e 240-339HP) para transbordo e Colheitadeiras de Cana.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row10" class="row_heading level0 row10" >11</th>
+      <td id="T_7e382_row10_col0" class="data row10 col0" >Feijão</td>
+      <td id="T_7e382_row10_col1" class="data row10 col1" >15,20</td>
+      <td id="T_7e382_row10_col2" class="data row10 col2" >12,08</td>
+      <td id="T_7e382_row10_col3" class="data row10 col3" >12,74</td>
+      <td id="T_7e382_row10_col4" class="data row10 col4" >13,18</td>
+      <td id="T_7e382_row10_col5" class="data row10 col5" >13,47</td>
+      <td id="T_7e382_row10_col6" class="data row10 col6" >13,50</td>
+      <td id="T_7e382_row10_col7" class="data row10 col7" >0.25%</td>
+      <td id="T_7e382_row10_col8" class="data row10 col8" >↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de Tratores Médios (80-119HP e 120-169HP) e Implementos Menores.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row11" class="row_heading level0 row11" >13</th>
+      <td id="T_7e382_row11_col0" class="data row11 col0" >Laranja</td>
+      <td id="T_7e382_row11_col1" class="data row11 col1" >29,05</td>
+      <td id="T_7e382_row11_col2" class="data row11 col2" >25,04</td>
+      <td id="T_7e382_row11_col3" class="data row11 col3" >15,57</td>
+      <td id="T_7e382_row11_col4" class="data row11 col4" >15,08</td>
+      <td id="T_7e382_row11_col5" class="data row11 col5" >15,49</td>
+      <td id="T_7e382_row11_col6" class="data row11 col6" >15,89</td>
+      <td id="T_7e382_row11_col7" class="data row11 col7" >2.59%</td>
+      <td id="T_7e382_row11_col8" class="data row11 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Leves/Fruteiros (0-49HP e 50-79HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row12" class="row_heading level0 row12" >14</th>
+      <td id="T_7e382_row12_col0" class="data row12 col0" >Mamona</td>
+      <td id="T_7e382_row12_col1" class="data row12 col1" >0,13</td>
+      <td id="T_7e382_row12_col2" class="data row12 col2" >0,16</td>
+      <td id="T_7e382_row12_col3" class="data row12 col3" >-</td>
+      <td id="T_7e382_row12_col4" class="data row12 col4" >-</td>
+      <td id="T_7e382_row12_col5" class="data row12 col5" >0,12</td>
+      <td id="T_7e382_row12_col6" class="data row12 col6" >0,12</td>
+      <td id="T_7e382_row12_col7" class="data row12 col7" >2.65%</td>
+      <td id="T_7e382_row12_col8" class="data row12 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row13" class="row_heading level0 row13" >15</th>
+      <td id="T_7e382_row13_col0" class="data row13 col0" >Mandioca</td>
+      <td id="T_7e382_row13_col1" class="data row13 col1" >19,95</td>
+      <td id="T_7e382_row13_col2" class="data row13 col2" >20,34</td>
+      <td id="T_7e382_row13_col3" class="data row13 col3" >25,12</td>
+      <td id="T_7e382_row13_col4" class="data row13 col4" >23,77</td>
+      <td id="T_7e382_row13_col5" class="data row13 col5" >23,22</td>
+      <td id="T_7e382_row13_col6" class="data row13 col6" >22,88</td>
+      <td id="T_7e382_row13_col7" class="data row13 col7" >-1.51%</td>
+      <td id="T_7e382_row13_col8" class="data row13 col8" >↘️ CAUTELA: Leve retração faz o produtor segurar caixa. Giro de Tratores Médios (80-119HP e 120-169HP) e Implementos Menores pode ficar mais lento.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row14" class="row_heading level0 row14" >16</th>
+      <td id="T_7e382_row14_col0" class="data row14 col0" >Milho</td>
+      <td id="T_7e382_row14_col1" class="data row14 col1" >128,61</td>
+      <td id="T_7e382_row14_col2" class="data row14 col2" >170,99</td>
+      <td id="T_7e382_row14_col3" class="data row14 col3" >154,63</td>
+      <td id="T_7e382_row14_col4" class="data row14 col4" >153,76</td>
+      <td id="T_7e382_row14_col5" class="data row14 col5" >159,39</td>
+      <td id="T_7e382_row14_col6" class="data row14 col6" >161,69</td>
+      <td id="T_7e382_row14_col7" class="data row14 col7" >1.44%</td>
+      <td id="T_7e382_row14_col8" class="data row14 col8" >↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de Tratores de Alta Potência (240-339HP e >340HP), Colheitadeiras, Pulverizadores e Plantadeiras.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row15" class="row_heading level0 row15" >18</th>
+      <td id="T_7e382_row15_col0" class="data row15 col0" >Soja</td>
+      <td id="T_7e382_row15_col1" class="data row15 col1" >305,96</td>
+      <td id="T_7e382_row15_col2" class="data row15 col2" >338,72</td>
+      <td id="T_7e382_row15_col3" class="data row15 col3" >342,09</td>
+      <td id="T_7e382_row15_col4" class="data row15 col4" >330,88</td>
+      <td id="T_7e382_row15_col5" class="data row15 col5" >332,44</td>
+      <td id="T_7e382_row15_col6" class="data row15 col6" >337,03</td>
+      <td id="T_7e382_row15_col7" class="data row15 col7" >1.38%</td>
+      <td id="T_7e382_row15_col8" class="data row15 col8" >↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de Tratores de Alta Potência (240-339HP e >340HP), Colheitadeiras, Pulverizadores e Plantadeiras.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row16" class="row_heading level0 row16" >19</th>
+      <td id="T_7e382_row16_col0" class="data row16 col0" >Tomate</td>
+      <td id="T_7e382_row16_col1" class="data row16 col1" >21,03</td>
+      <td id="T_7e382_row16_col2" class="data row16 col2" >21,12</td>
+      <td id="T_7e382_row16_col3" class="data row16 col3" >17,41</td>
+      <td id="T_7e382_row16_col4" class="data row16 col4" >17,52</td>
+      <td id="T_7e382_row16_col5" class="data row16 col5" >18,91</td>
+      <td id="T_7e382_row16_col6" class="data row16 col6" >20,70</td>
+      <td id="T_7e382_row16_col7" class="data row16 col7" >9.45%</td>
+      <td id="T_7e382_row16_col8" class="data row16 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Médios (80-119HP e 120-169HP) e Implementos Menores.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row17" class="row_heading level0 row17" >20</th>
+      <td id="T_7e382_row17_col0" class="data row17 col0" >Trigo</td>
+      <td id="T_7e382_row17_col1" class="data row17 col1" >10,79</td>
+      <td id="T_7e382_row17_col2" class="data row17 col2" >10,71</td>
+      <td id="T_7e382_row17_col3" class="data row17 col3" >8,62</td>
+      <td id="T_7e382_row17_col4" class="data row17 col4" >8,55</td>
+      <td id="T_7e382_row17_col5" class="data row17 col5" >8,39</td>
+      <td id="T_7e382_row17_col6" class="data row17 col6" >8,68</td>
+      <td id="T_7e382_row17_col7" class="data row17 col7" >3.38%</td>
+      <td id="T_7e382_row17_col8" class="data row17 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores de Alta Potência (240-339HP e >340HP), Colheitadeiras, Pulverizadores e Plantadeiras.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row18" class="row_heading level0 row18" >21</th>
+      <td id="T_7e382_row18_col0" class="data row18 col0" >Uva</td>
+      <td id="T_7e382_row18_col1" class="data row18 col1" >11,48</td>
+      <td id="T_7e382_row18_col2" class="data row18 col2" >13,08</td>
+      <td id="T_7e382_row18_col3" class="data row18 col3" >10,58</td>
+      <td id="T_7e382_row18_col4" class="data row18 col4" >11,01</td>
+      <td id="T_7e382_row18_col5" class="data row18 col5" >11,64</td>
+      <td id="T_7e382_row18_col6" class="data row18 col6" >11,88</td>
+      <td id="T_7e382_row18_col7" class="data row18 col7" >2.06%</td>
+      <td id="T_7e382_row18_col8" class="data row18 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Leves/Fruteiros (0-49HP e 50-79HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row19" class="row_heading level0 row19" >23</th>
+      <td id="T_7e382_row19_col0" class="data row19 col0" >TOTAL LAVOURAS</td>
+      <td id="T_7e382_row19_col1" class="data row19 col1" >865,73</td>
+      <td id="T_7e382_row19_col2" class="data row19 col2" >957,73</td>
+      <td id="T_7e382_row19_col3" class="data row19 col3" >895,31</td>
+      <td id="T_7e382_row19_col4" class="data row19 col4" >877,59</td>
+      <td id="T_7e382_row19_col5" class="data row19 col5" >890,03</td>
+      <td id="T_7e382_row19_col6" class="data row19 col6" >905,09</td>
+      <td id="T_7e382_row19_col7" class="data row19 col7" >1.69%</td>
+      <td id="T_7e382_row19_col8" class="data row19 col8" >↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row20" class="row_heading level0 row20" >24</th>
+      <td id="T_7e382_row20_col0" class="data row20 col0" >Bovinos</td>
+      <td id="T_7e382_row20_col1" class="data row20 col1" >175,13</td>
+      <td id="T_7e382_row20_col2" class="data row20 col2" >226,46</td>
+      <td id="T_7e382_row20_col3" class="data row20 col3" >218,70</td>
+      <td id="T_7e382_row20_col4" class="data row20 col4" >221,81</td>
+      <td id="T_7e382_row20_col5" class="data row20 col5" >237,48</td>
+      <td id="T_7e382_row20_col6" class="data row20 col6" >246,43</td>
+      <td id="T_7e382_row20_col7" class="data row20 col7" >3.77%</td>
+      <td id="T_7e382_row20_col8" class="data row20 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row21" class="row_heading level0 row21" >25</th>
+      <td id="T_7e382_row21_col0" class="data row21 col0" >Suínos</td>
+      <td id="T_7e382_row21_col1" class="data row21 col1" >57,47</td>
+      <td id="T_7e382_row21_col2" class="data row21 col2" >65,87</td>
+      <td id="T_7e382_row21_col3" class="data row21 col3" >60,35</td>
+      <td id="T_7e382_row21_col4" class="data row21 col4" >56,12</td>
+      <td id="T_7e382_row21_col5" class="data row21 col5" >56,08</td>
+      <td id="T_7e382_row21_col6" class="data row21 col6" >54,89</td>
+      <td id="T_7e382_row21_col7" class="data row21 col7" >-2.12%</td>
+      <td id="T_7e382_row21_col8" class="data row21 col8" >🔴 ALERTA: Queda severa retrai financiamentos. Venda de Tratores Multiuso (80-119HP e 120-169HP) deve cair; focar em Pós-Venda.</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row22" class="row_heading level0 row22" >26</th>
+      <td id="T_7e382_row22_col0" class="data row22 col0" >Frango</td>
+      <td id="T_7e382_row22_col1" class="data row22 col1" >109,73</td>
+      <td id="T_7e382_row22_col2" class="data row22 col2" >117,98</td>
+      <td id="T_7e382_row22_col3" class="data row22 col3" >104,30</td>
+      <td id="T_7e382_row22_col4" class="data row22 col4" >102,19</td>
+      <td id="T_7e382_row22_col5" class="data row22 col5" >103,72</td>
+      <td id="T_7e382_row22_col6" class="data row22 col6" >105,67</td>
+      <td id="T_7e382_row22_col7" class="data row22 col7" >1.88%</td>
+      <td id="T_7e382_row22_col8" class="data row22 col8" >↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row23" class="row_heading level0 row23" >27</th>
+      <td id="T_7e382_row23_col0" class="data row23 col0" >Leite</td>
+      <td id="T_7e382_row23_col1" class="data row23 col1" >70,27</td>
+      <td id="T_7e382_row23_col2" class="data row23 col2" >76,65</td>
+      <td id="T_7e382_row23_col3" class="data row23 col3" >69,85</td>
+      <td id="T_7e382_row23_col4" class="data row23 col4" >68,48</td>
+      <td id="T_7e382_row23_col5" class="data row23 col5" >70,50</td>
+      <td id="T_7e382_row23_col6" class="data row23 col6" >72,46</td>
+      <td id="T_7e382_row23_col7" class="data row23 col7" >2.78%</td>
+      <td id="T_7e382_row23_col8" class="data row23 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row24" class="row_heading level0 row24" >28</th>
+      <td id="T_7e382_row24_col0" class="data row24 col0" >Ovos</td>
+      <td id="T_7e382_row24_col1" class="data row24 col1" >27,52</td>
+      <td id="T_7e382_row24_col2" class="data row24 col2" >30,40</td>
+      <td id="T_7e382_row24_col3" class="data row24 col3" >22,12</td>
+      <td id="T_7e382_row24_col4" class="data row24 col4" >24,51</td>
+      <td id="T_7e382_row24_col5" class="data row24 col5" >26,76</td>
+      <td id="T_7e382_row24_col6" class="data row24 col6" >27,99</td>
+      <td id="T_7e382_row24_col7" class="data row24 col7" >4.57%</td>
+      <td id="T_7e382_row24_col8" class="data row24 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row25" class="row_heading level0 row25" >29</th>
+      <td id="T_7e382_row25_col0" class="data row25 col0" >TOTAL PECUÁRIA</td>
+      <td id="T_7e382_row25_col1" class="data row25 col1" >440,11</td>
+      <td id="T_7e382_row25_col2" class="data row25 col2" >517,37</td>
+      <td id="T_7e382_row25_col3" class="data row25 col3" >475,33</td>
+      <td id="T_7e382_row25_col4" class="data row25 col4" >473,12</td>
+      <td id="T_7e382_row25_col5" class="data row25 col5" >494,55</td>
+      <td id="T_7e382_row25_col6" class="data row25 col6" >507,44</td>
+      <td id="T_7e382_row25_col7" class="data row25 col7" >2.61%</td>
+      <td id="T_7e382_row25_col8" class="data row25 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+    <tr>
+      <th id="T_7e382_level0_row26" class="row_heading level0 row26" >30</th>
+      <td id="T_7e382_row26_col0" class="data row26 col0" >VBP TOTAL</td>
+      <td id="T_7e382_row26_col1" class="data row26 col1" >1.305,84</td>
+      <td id="T_7e382_row26_col2" class="data row26 col2" >1.475,11</td>
+      <td id="T_7e382_row26_col3" class="data row26 col3" >1.370,64</td>
+      <td id="T_7e382_row26_col4" class="data row26 col4" >1.350,71</td>
+      <td id="T_7e382_row26_col5" class="data row26 col5" >1.384,58</td>
+      <td id="T_7e382_row26_col6" class="data row26 col6" >1.412,53</td>
+      <td id="T_7e382_row26_col7" class="data row26 col7" >2.02%</td>
+      <td id="T_7e382_row26_col8" class="data row26 col8" >📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de Tratores Multiuso (80-119HP e 120-169HP).</td>
+    </tr>
+  </tbody>
+</table>
+
             </body>
             </html>
-            ''')
             
-        logging.info(f"Sucesso! Relatório gerado em: {os.path.abspath(caminho_html)}")
-        return caminho_html
-
-# ==========================================
-# 4. EXECUÇÃO PRINCIPAL
-# ==========================================
-if __name__ == "__main__":
-    print(f"\n{'='*60}\nATENÇÃO: Os arquivos e pastas estão sendo criados EXATAMENTE aqui:\n-> {BASE_DIR} <-\n{'='*60}\n")
-
-    PASTAS = {
-        "down": os.path.join(BASE_DIR, "downloads"), 
-        "hist": os.path.join(BASE_DIR, "bases_historicas"), 
-        "rel": BASE_DIR
-    }
-    URL = "https://www.gov.br/agricultura/pt-br/assuntos/politica-agricola/valor-bruto-da-producao-agropecuaria-vbp"
-
-    scraper = AgroScraper(URL, PASTAS["down"])
-    
-    if scraper.extrair_planilhas():
-        scraper.padronizar_nomes_arquivos()
-        etl = AgroETL(PASTAS["down"], PASTAS["hist"], PASTAS["rel"])
-        
-        if etl.cruzar_e_salvar_versao():
-            etl.gerar_relatorio_html()
