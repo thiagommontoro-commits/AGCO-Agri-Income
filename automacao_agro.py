@@ -51,15 +51,19 @@ class AgroScraper:
             os.remove(arquivo_antigo)
 
         for link in links:
-            href = link['href']
-            if href.endswith('.xlsx') or href.endswith('.xls'):
+            href = link.get('href', '')
+            href_lower = href.lower()
+            if '.xls' in href_lower:
                 url_completa = urljoin(self.url, href) 
                 nome_arquivo = url_completa.split('/')[-1].split('?')[0].lower()
+                if not nome_arquivo.endswith(('.xls', '.xlsx')):
+                    nome_arquivo = f"vbp_brasil_{planilhas_baixadas}.xlsx"
                 
-                # Filtra apenas planilhas gerais (Brasil)
-                if 'regional' in nome_arquivo:
+                # Filtro restrito: apenas planilhas gerais (Brasil)
+                texto_link = link.text.lower() if link.text else ""
+                if 'regional' in nome_arquivo or 'regional' in href_lower or 'regional' in texto_link:
                     continue
-                if 'vbp' not in nome_arquivo:
+                if 'vbp' not in nome_arquivo and 'vbp' not in href_lower and 'brasil' not in href_lower:
                     continue
 
                 caminho_salvar = os.path.join(self.dir_downloads, nome_arquivo)
@@ -232,13 +236,7 @@ class AgroETL:
         novas_colunas = []
         for i, c in enumerate(df.columns):
             if i > 0: 
-                base_name = re.sub(r'\.0$', '', str(c)).replace('*', '').strip()
-                col_name = base_name
-                contador = 1
-                while col_name in novas_colunas:
-                    col_name = f"{base_name}_{contador}"
-                    contador += 1
-                novas_colunas.append(col_name)
+                novas_colunas.append(re.sub(r'\.0$', '', str(c)).replace('*', '').strip())
             else:
                 novas_colunas.append(c)
         df.columns = novas_colunas
