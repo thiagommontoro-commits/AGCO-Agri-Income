@@ -56,18 +56,13 @@ class AgroScraper:
                 url_completa = urljoin(self.url, href) 
                 nome_arquivo = url_completa.split('/')[-1].split('?')[0].lower()
                 
-                # Filtra arquivos relevantes: busca por termos mais genéricos do VBP
-                if not any(termo in nome_arquivo for termo in ['vbp', 'valor', 'producao', 'agropecuario']):
-                    logging.info(f"Ignorando arquivo '{nome_arquivo}' - nome não contém termos relevantes (VBP, Valor, Producao, Agropecuario).")
+                # Filtra EXATAMENTE o que foi pedido: apenas VBP Geral (Brasil) e apenas 2026
+                if '2026' not in nome_arquivo:
                     continue
-                
-                # Filtra apenas os arquivos do ano atual em diante (ignora anos anteriores)
-                ano_atual = datetime.now().year
-                match_ano = re.search(r'\d{4}', nome_arquivo)
-                if match_ano:
-                    ano_arquivo = int(match_ano.group())
-                    if ano_arquivo < (ano_atual - 1):
-                        continue
+                if 'regional' in nome_arquivo:
+                    continue
+                if 'vbp' not in nome_arquivo:
+                    continue
 
                 caminho_salvar = os.path.join(self.dir_downloads, nome_arquivo)
                 
@@ -254,6 +249,9 @@ class AgroETL:
         df_atual = df[df['versao_arquivo'] == versao_atual].copy()
         col_produto_str = df_atual.columns[1]
 
+        # Remove duplicatas para evitar explosão de memória (Cartesian Product)
+        df_atual = df_atual.drop_duplicates(subset=[col_produto_str])
+
         cols_base = [col_produto_str]
         for ano in ['2024', '2025']:
             if ano in df_atual.columns: cols_base.append(ano)
@@ -263,6 +261,7 @@ class AgroETL:
         colunas_2026 = []
         for v in versoes:
             df_v = df[df['versao_arquivo'] == v].copy()
+            df_v = df_v.drop_duplicates(subset=[col_produto_str])
             if '2026' in df_v.columns:
                 nome_coluna_mes = f'2026 ({v})'
                 df_v_2026 = df_v[[col_produto_str, '2026']].rename(columns={'2026': nome_coluna_mes})
@@ -342,24 +341,24 @@ class AgroETL:
 
         try:
             total_culturas = len(df_exibicao)
-            valid_vars = df_exibicao.dropna(subset=[coluna_var_mes])
+            valid_vars = df_exibicao.dropna(subset=[coluna_var])
             if not valid_vars.empty:
-                max_idx = valid_vars[coluna_var_mes].idxmax()
-                min_idx = valid_vars[coluna_var_mes].idxmin()
+                max_idx = valid_vars[coluna_var].idxmax()
+                min_idx = valid_vars[coluna_var].idxmin()
                 
                 maior_alta_prod = valid_vars.loc[max_idx, 'Produto / Cultura']
-                maior_alta_val = valid_vars.loc[max_idx, coluna_var_mes]
+                maior_alta_val = valid_vars.loc[max_idx, coluna_var]
                 str_alta = f"{maior_alta_prod} (+{maior_alta_val:.1f}%)"
                 
                 maior_queda_prod = valid_vars.loc[min_idx, 'Produto / Cultura']
-                maior_queda_val = valid_vars.loc[min_idx, coluna_var_mes]
+                maior_queda_val = valid_vars.loc[min_idx, coluna_var]
                 str_queda = f"{maior_queda_prod} ({maior_queda_val:.1f}%)"
             else:
                 str_alta, str_queda = "-", "-"
         except:
             total_culturas = 0; str_alta = "-"; str_queda = "-"
 
-        cols_formatar_cores = [c for c in [coluna_var_mes, coluna_var_ano] if c in df_exibicao.columns]
+        cols_formatar_cores = [c for c in [coluna_var] if c in df_exibicao.columns]
         html = (df_exibicao.style.hide(axis="index")
                 .map(formatar_cores, subset=cols_formatar_cores)
                 .format("{:.2f}%", subset=cols_formatar_cores, na_rep="-")
@@ -450,10 +449,10 @@ class AgroETL:
 
                     /* Tabela */
                     table {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
-                    thead th {{ background-color: var(--dark-color); color: #fff; text-align: right; padding: 12px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: none; }}
+                    thead th {{ background-color: var(--dark-color); color: #fff; text-align: center; padding: 12px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: none; }}
                     thead th:first-child {{ text-align: left; }}
                     tbody tr {{ border-bottom: 1px solid var(--border-color); }}
-                    tbody td {{ padding: 8px 10px; text-align: right; color: #444; border: none; }}
+                    tbody td {{ padding: 8px 10px; text-align: center; color: #444; border: none; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: var(--dark-color); }}
                     /* Controle super restrito da largura da coluna de IA */
                     thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.1; font-size: 10px; color: #555; white-space: normal; }}
