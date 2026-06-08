@@ -436,14 +436,17 @@ class AgroETL:
                         --negative: #D83B01;
                         --header-bg: #1e293b;
                     }}
-                    body {{ background-color: var(--bg-page); font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 40px 20px; color: var(--text-main); }}
-                    .dashboard-container {{ background-color: var(--bg-card); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05); max-width: 1400px; margin: 0 auto; overflow: hidden; }}
-                    .header {{ display: flex; justify-content: space-between; align-items: center; background-color: var(--header-bg); padding: 30px 40px; border-bottom: 4px solid var(--agco-red); }}
-                    .title-area h2 {{ margin: 0 0 8px 0; font-size: 2.2em; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }}
-                    .title-area p {{ color: #94a3b8; margin: 0; font-size: 1.1em; font-weight: 500; }}
+                    body {{ background-color: var(--bg-page); font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; color: var(--text-main); top: 0 !important; }}
+                    .skiptranslate {{ display: none !important; }}
+                    .dashboard-container {{ background-color: var(--bg-card); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05); max-width: 1550px; margin: 0 auto; overflow: hidden; }}
+                    .header {{ display: flex; justify-content: space-between; align-items: center; background-color: var(--header-bg); padding: 20px 30px; border-bottom: 4px solid var(--agco-red); }}
+                    .title-area h2 {{ margin: 0 0 5px 0; font-size: 1.8em; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }}
+                    .title-area p {{ color: #94a3b8; margin: 0; font-size: 1em; font-weight: 500; }}
                     .developer-info {{ text-align: right; color: #94a3b8; font-size: 0.9em; line-height: 1.4; }}
                     .developer-info strong {{ color: #ffffff; font-size: 1.15em; display: block; margin-top: 4px; font-weight: 600; }}
-                    .content-area {{ padding: 30px 40px 40px 40px; }}
+                    .btn-lang {{ background: #ffffff; border: 1px solid var(--border-light); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; color: var(--text-main); margin-left: 5px; transition: 0.2s; }}
+                    .btn-lang:hover {{ background: #e9ecef; }}
+                    .content-area {{ padding: 20px 30px 30px 30px; }}
                     
                     .info-strip {{ display: flex; flex-wrap: wrap; justify-content: space-between; background-color: #f8f9fa; border-left: 5px solid var(--agco-red); padding: 15px 20px; border-radius: 0 8px 8px 0; margin-bottom: 30px; font-size: 0.95em; color: #495057; gap: 15px; }}
                     .info-item strong {{ color: var(--text-main); }}
@@ -461,15 +464,15 @@ class AgroETL:
                     .table-container {{ overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-light); }}
                     table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; background-color: #fff; }}
                     thead {{ background-color: var(--text-main); color: #ffffff; }}
-                    th {{ padding: 15px; text-align: center; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.85em; white-space: nowrap; border: none; }}
+                    th {{ padding: 10px 8px; text-align: center; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; font-size: 11px; white-space: nowrap; border: none; }}
                     th:first-child {{ text-align: left; position: sticky; left: 0; background-color: var(--text-main); z-index: 2; }}
-                    td {{ padding: 12px 15px; text-align: center; border-bottom: 1px solid var(--border-light); color: #495057; font-variant-numeric: tabular-nums; border-top: none; border-left: none; border-right: none; }}
-                    td:first-child {{ text-align: left; font-weight: 600; color: var(--text-main); position: sticky; left: 0; background-color: #fff; border-right: 2px solid var(--border-light); z-index: 1; }}
+                    td {{ padding: 8px 8px; text-align: center; border-bottom: 1px solid var(--border-light); color: #495057; font-variant-numeric: tabular-nums; border-top: none; border-left: none; border-right: none; font-size: 12px; }}
+                    td:first-child {{ text-align: left; font-weight: 600; color: var(--text-main); position: sticky; left: 0; background-color: #fff; border-right: 2px solid var(--border-light); z-index: 1; font-size: 12px; }}
                     tbody tr:hover td {{ background-color: #f8f9fa; }}
                     
                     /* Coluna IA - Layout Moderno com Letra Preta e Fundo Claro */
-                    thead th:last-child {{ text-align: left; max-width: 180px; background-color: var(--text-main); }}
-                    tbody td:last-child {{ text-align: left; max-width: 180px; line-height: 1.4; font-size: 11.5px; color: #000000; font-weight: 700; white-space: normal; background-color: #f4f7f6; border-left: 2px solid var(--border-light); }}
+                    thead th:last-child {{ text-align: left; max-width: 160px; background-color: var(--text-main); }}
+                    tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.3; font-size: 11px; color: #000000; font-weight: 700; white-space: normal; background-color: #f4f7f6; border-left: 2px solid var(--border-light); }}
                     
                     .action-buttons {{ margin-top: 25px; text-align: right; }}
                     .btn-excel {{ background: #107C41; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }}
@@ -477,15 +480,21 @@ class AgroETL:
                 </style>
             </head>
             <body>
+                <div id="google_translate_element" style="display:none;"></div>
                 <div class="dashboard-container">
                     <div class="header">
                         <div class="title-area">
-                            <h2>Painel Executivo de Acompanhamento VBP</h2>
-                            <p>Evolução de Safra e Valor Bruto da Produção Nacional com IA</p>
+                            <h2>Painel renda agrícola</h2>
+                            <p>Valor Bruto da Produção Nacional</p>
                         </div>
                         <div class="developer-info">
                             Desenvolvido por<br>
                             <strong>Reporting & Analytics AGCO</strong>
+                            <div style="margin-top: 8px;">
+                                <button class="btn-lang" onclick="doGTranslate('pt')">🇧🇷 PT</button>
+                                <button class="btn-lang" onclick="doGTranslate('en')">🇺🇸 EN</button>
+                                <button class="btn-lang" onclick="doGTranslate('es')">🇪🇸 ES</button>
+                            </div>
                         </div>
                     </div>
 
