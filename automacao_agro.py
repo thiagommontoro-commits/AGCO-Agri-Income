@@ -375,10 +375,11 @@ class AgroETL:
         except:
             total_culturas = 0; str_alta = "-"; str_queda = "-"
 
-        html = (df_exibicao.style.map(formatar_cores, subset=[coluna_var] if coluna_var in df_exibicao.columns else [])
+        html = (df_exibicao.style.hide(axis="index")
+                .map(formatar_cores, subset=[coluna_var] if coluna_var in df_exibicao.columns else [])
                 .format("{:.2f}%", subset=[coluna_var], na_rep="-")
                 .format(formata_br, subset=cols_numericas)
-                .to_html(index=False))
+                .to_html())
         
         caminho_html = os.path.join(self.dir_relatorios, 'index.html')
         
@@ -388,11 +389,12 @@ class AgroETL:
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
-                <title>Painel Executivo VBP - AGCO</title>
+                <title>Painel Executivo VBP</title>
                 <style>
                     :root {{
-                        --agco-red: #BA0C2F;
-                        --agco-dark: #2c2c2c;
+                        --primary-color: #005a9c;
+                        --dark-color: #2c2c2c;
+                        --danger-color: #d9534f;
                         --bg-light: #e9ecef;
                     }}
                     body {{
@@ -407,7 +409,7 @@ class AgroETL:
                         border-radius: 8px;
                         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
                         padding: 30px 40px;
-                        border-top: 6px solid var(--agco-red);
+                        border-top: 6px solid var(--primary-color);
                         max-width: 1500px;
                         margin: 0 auto;
                     }}
@@ -419,10 +421,8 @@ class AgroETL:
                         padding-bottom: 15px;
                         margin-bottom: 25px;
                     }}
-                    .title-area h2 {{ color: var(--agco-dark); margin: 0 0 5px 0; font-size: 1.8em; font-weight: 700; }}
+                    .title-area h2 {{ color: var(--dark-color); margin: 0 0 5px 0; font-size: 1.8em; font-weight: 700; }}
                     .title-area p {{ color: #666; margin: 0; font-size: 0.95em; }}
-                    .logo-text {{ font-size: 32px; font-weight: 900; color: var(--agco-dark); letter-spacing: 1.5px; margin: 0; }}
-                    .logo-text span {{ color: var(--agco-red); }}
                     
                     /* Blocos de Destaques (KPIs) */
                     .kpi-grid {{ display: flex; gap: 20px; margin-bottom: 30px; }}
@@ -433,18 +433,18 @@ class AgroETL:
                         border-radius: 6px; 
                         box-shadow: 0 3px 10px rgba(0,0,0,0.06); 
                         border: 1px solid #eaeaea;
-                        border-left: 5px solid var(--agco-dark);
+                        border-left: 5px solid var(--dark-color);
                     }}
-                    .kpi-card.brand {{ border-left-color: var(--agco-dark); }}
+                    .kpi-card.brand {{ border-left-color: var(--dark-color); }}
                     .kpi-card.positive {{ border-left-color: #107C41; }}
-                    .kpi-card.negative {{ border-left-color: var(--agco-red); }}
+                    .kpi-card.negative {{ border-left-color: var(--danger-color); }}
                     
                     .kpi-title {{ font-size: 13px; color: #7f8c8d; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px; }}
-                    .kpi-value {{ font-size: 24px; font-weight: 800; color: var(--agco-dark); margin: 0; }}
+                    .kpi-value {{ font-size: 24px; font-weight: 800; color: var(--dark-color); margin: 0; }}
                     
                     /* Tabela Profissional */
                     table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 10px; }}
-                    thead th {{ background-color: var(--agco-dark); color: #ffffff; text-align: right; padding: 12px 10px; border: 1px solid #444; text-transform: uppercase; font-size: 0.9em; letter-spacing: 0.5px; }}
+                    thead th {{ background-color: var(--dark-color); color: #ffffff; text-align: right; padding: 12px 10px; border: 1px solid #444; text-transform: uppercase; font-size: 0.9em; letter-spacing: 0.5px; }}
                     thead th:first-child {{ text-align: left; }}
                     tbody td {{ padding: 10px 10px; border: 1px solid #e0e0e0; text-align: right; color: #333; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; background-color: #fafafa; border-right: 2px solid #ccc; }}
@@ -459,10 +459,9 @@ class AgroETL:
                     <div class="header">
                         <div class="title-area">
                             <h2>Painel Executivo de VBP</h2>
-                            <p>Acompanhamento de Valor Bruto da Produção com Inteligência de Maquinário</p>
+                            <p>Acompanhamento de Valor Bruto da Produção com Inteligência de Mercado</p>
                         </div>
                         <div style="text-align: right;">
-                            <h1 class="logo-text">AG<span>CO</span></h1>
                             <p style="margin: 5px 0 0 0; color: #666; font-size: 0.85em;">Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
                         </div>
                     </div>
