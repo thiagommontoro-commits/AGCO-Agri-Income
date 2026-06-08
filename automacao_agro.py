@@ -306,8 +306,12 @@ class AgroETL:
         # -------------------------------------------------------------------
         def gerar_insight(row):
             cultura = str(row['Produto / Cultura']).lower()
-            var = row[coluna_var_mes]
+            var_mes = row.get(coluna_var_mes, pd.NA)
+            var_ano = row.get(coluna_var_ano, pd.NA)
             
+            # Se o robô rodar do zero (sem mês anterior salvo), a IA usa a variação anual (Safra vs Safra)
+            var = var_ano if pd.isna(var_mes) else var_mes
+
             if pd.isna(var): return "-"
             
             maquinas = ""
@@ -367,17 +371,18 @@ class AgroETL:
 
         try:
             total_culturas = len(df_exibicao)
-            valid_vars = df_exibicao.dropna(subset=[coluna_var_mes])
+            col_referencia = coluna_var_mes if not df_exibicao[coluna_var_mes].isna().all() else coluna_var_ano
+            valid_vars = df_exibicao.dropna(subset=[col_referencia])
             if not valid_vars.empty:
-                max_idx = valid_vars[coluna_var_mes].idxmax()
-                min_idx = valid_vars[coluna_var_mes].idxmin()
+                max_idx = valid_vars[col_referencia].idxmax()
+                min_idx = valid_vars[col_referencia].idxmin()
                 
                 maior_alta_prod = valid_vars.loc[max_idx, 'Produto / Cultura']
-                maior_alta_val = valid_vars.loc[max_idx, coluna_var_mes]
+                maior_alta_val = valid_vars.loc[max_idx, col_referencia]
                 str_alta = f"{maior_alta_prod} (+{maior_alta_val:.1f}%)"
                 
                 maior_queda_prod = valid_vars.loc[min_idx, 'Produto / Cultura']
-                maior_queda_val = valid_vars.loc[min_idx, coluna_var_mes]
+                maior_queda_val = valid_vars.loc[min_idx, col_referencia]
                 str_queda = f"{maior_queda_prod} ({maior_queda_val:.1f}%)"
             else:
                 str_alta, str_queda = "-", "-"
