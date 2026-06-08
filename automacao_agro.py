@@ -522,12 +522,28 @@ class AgroETL:
                 </div>
 
                 <script type="text/javascript">
+                    function googleTranslateElementInit() {{
+                        new google.translate.TranslateElement({{pageLanguage: 'pt', autoDisplay: false}}, 'google_translate_element');
+                    }}
+                    function doGTranslate(lang) {{
+                        if (lang === 'pt') {{
+                            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                            location.reload();
+                            return;
+                        }}
+                        var select = document.querySelector('select.goog-te-combo');
+                        if (select) {{
+                            select.value = lang;
+                            select.dispatchEvent(new Event('change'));
+                        }}
+                    }}
                     function exportExcel() {{
                         var table = document.querySelector("table");
                         var wb = XLSX.utils.table_to_book(table, {{sheet: "Painel VBP"}});
                         XLSX.writeFile(wb, "Painel_VBP_Agro.xlsx");
                     }}
                 </script>
+                <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </body>
             </html>
             ''')
