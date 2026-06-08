@@ -300,6 +300,11 @@ class AgroETL:
             df_exibicao[coluna_var_ano] = ((df_exibicao[col_atual] - df_exibicao[ano_anterior]) / df_exibicao[ano_anterior].replace(0, pd.NA)) * 100
         else:
             df_exibicao[coluna_var_ano] = pd.NA
+            
+        # Remover as colunas dos anos anteriores da tabela final, limpando o visual para focar apenas em 2026
+        for ano in [ano_retrasado, ano_anterior]:
+            if ano in df_exibicao.columns:
+                df_exibicao = df_exibicao.drop(columns=[ano])
 
         # -------------------------------------------------------------------
         # AJUSTE: Textos concisos para o Impacto em Maquinário (IA)
