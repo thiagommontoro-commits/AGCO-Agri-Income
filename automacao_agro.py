@@ -393,9 +393,9 @@ class AgroETL:
                 <style>
                     :root {{
                         --primary-color: #005a9c;
-                        --dark-color: #2c2c2c;
+                        --dark-color: #000000; /* Preto absoluto para o cabeçalho */
                         --danger-color: #d9534f;
-                        --bg-light: #e9ecef;
+                        --bg-light: #f4f7f6;
                     }}
                     body {{
                         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -407,7 +407,7 @@ class AgroETL:
                     .dashboard-container {{
                         background-color: #ffffff;
                         border-radius: 8px;
-                        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+                        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
                         padding: 30px 40px;
                         border-top: 6px solid var(--primary-color);
                         max-width: 1500px;
@@ -444,14 +444,18 @@ class AgroETL:
                     
                     /* Tabela Profissional */
                     table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 10px; }}
-                    thead th {{ background-color: var(--dark-color); color: #ffffff; text-align: right; padding: 12px 10px; border: 1px solid #444; text-transform: uppercase; font-size: 0.9em; letter-spacing: 0.5px; }}
+                    thead th {{ background-color: var(--dark-color); color: #ffffff; text-align: right; padding: 15px 12px; border: none; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; }}
                     thead th:first-child {{ text-align: left; }}
-                    tbody td {{ padding: 10px 10px; border: 1px solid #e0e0e0; text-align: right; color: #333; }}
-                    tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; background-color: #fafafa; border-right: 2px solid #ccc; }}
+                    tbody tr {{ border-bottom: 1px solid #eaeaea; }} /* Linha sutil apenas na horizontal */
+                    tbody td {{ padding: 14px 12px; border: none; text-align: right; color: #444; }}
+                    tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: #111; }}
                     /* Mantém o texto da IA organizado para não esticar a tela infinitamente */
-                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 350px; white-space: normal; line-height: 1.4; border-left: 2px solid #ccc; background-color: #fcfcfc; }}
-                    tbody tr:hover td {{ background-color: #f1f1f1; }}
-                    tbody tr:nth-child(even) td:not(:first-child):not(:last-child) {{ background-color: #fafafa; }}
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 350px; white-space: normal; line-height: 1.5; }}
+                    tbody tr:hover {{ background-color: #f8f9fa; }}
+                    
+                    /* Rodapé (Assinatura) */
+                    .footer-note {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #f0f0f0; text-align: center; color: #888; font-size: 0.9em; }}
+                    .footer-note strong {{ color: var(--primary-color); }}
                 </style>
             </head>
             <body>
@@ -482,6 +486,10 @@ class AgroETL:
                     </div>
 
                     {html}
+                    
+                    <div class="footer-note">
+                        Desenvolvido pela área da <strong>AGCO Reporting & Analytics</strong>
+                    </div>
                 </div>
             </body>
             </html>
