@@ -252,41 +252,63 @@ class AgroETL:
         # Remove duplicatas para evitar explosão de memória (Cartesian Product)
         df_atual = df_atual.drop_duplicates(subset=[col_produto_str])
 
+        # Identifica dinamicamente o último ano (ex: 2026 ou 2027) e os anteriores
+        anos_encontrados = []
+        for c in df_atual.columns:
+            match = re.match(r'^(20\d{2})$', str(c).strip())
+            if match: anos_encontrados.append(int(match.group(1)))
+            
+        if anos_encontrados:
+            ano_maximo = str(max(anos_encontrados))
+            ano_anterior = str(max(anos_encontrados) - 1)
+            ano_retrasado = str(max(anos_encontrados) - 2)
+        else:
+            ano_maximo, ano_anterior, ano_retrasado = '2026', '2025', '2024'
+
         cols_base = [col_produto_str]
-        for ano in ['2024', '2025']:
+        for ano in [ano_retrasado, ano_anterior]:
             if ano in df_atual.columns: cols_base.append(ano)
                 
         df_exibicao = df_atual[cols_base].copy()
 
-        colunas_2026 = []
+        colunas_ano_maximo = []
         for v in versoes:
             df_v = df[df['versao_arquivo'] == v].copy()
             df_v = df_v.drop_duplicates(subset=[col_produto_str])
-            if '2026' in df_v.columns:
-                nome_coluna_mes = f'2026 ({v})'
-                df_v_2026 = df_v[[col_produto_str, '2026']].rename(columns={'2026': nome_coluna_mes})
-                df_exibicao = pd.merge(df_exibicao, df_v_2026, on=col_produto_str, how='left')
-                colunas_2026.append(nome_coluna_mes)
+            if ano_maximo in df_v.columns:
+                nome_coluna_mes = f'{ano_maximo} ({v})'
+                df_v_ano = df_v[[col_produto_str, ano_maximo]].rename(columns={ano_maximo: nome_coluna_mes})
+                df_exibicao = pd.merge(df_exibicao, df_v_ano, on=col_produto_str, how='left')
+                colunas_ano_maximo.append(nome_coluna_mes)
 
         df_exibicao = df_exibicao.rename(columns={col_produto_str: 'Produto / Cultura'})
 
-        coluna_var = 'Variação vs Mês Anterior (%)'
-        if len(colunas_2026) >= 2:
-            col_atual = colunas_2026[-1]
-            col_ant = colunas_2026[-2]
+        coluna_var_mes = 'Variação vs Mês Anterior (%)'
+        if len(colunas_ano_maximo) >= 2:
+            col_atual = colunas_ano_maximo[-1]
+            col_ant = colunas_ano_maximo[-2]
             
             df_exibicao[col_atual] = pd.to_numeric(df_exibicao[col_atual], errors='coerce').fillna(0)
             df_exibicao[col_ant] = pd.to_numeric(df_exibicao[col_ant], errors='coerce').fillna(0)
-            df_exibicao[coluna_var] = ((df_exibicao[col_atual] - df_exibicao[col_ant]) / df_exibicao[col_ant].replace(0, pd.NA)) * 100
+            df_exibicao[coluna_var_mes] = ((df_exibicao[col_atual] - df_exibicao[col_ant]) / df_exibicao[col_ant].replace(0, pd.NA)) * 100
         else:
-            df_exibicao[coluna_var] = pd.NA
+            df_exibicao[coluna_var_mes] = pd.NA
+
+        # Variação vs Ano Anterior
+        coluna_var_ano = f'Variação {ano_maximo} vs {ano_anterior} (%)'
+        if colunas_ano_maximo and ano_anterior in df_exibicao.columns:
+            col_atual = colunas_ano_maximo[-1]
+            df_exibicao[ano_anterior] = pd.to_numeric(df_exibicao[ano_anterior], errors='coerce').fillna(0)
+            df_exibicao[coluna_var_ano] = ((df_exibicao[col_atual] - df_exibicao[ano_anterior]) / df_exibicao[ano_anterior].replace(0, pd.NA)) * 100
+        else:
+            df_exibicao[coluna_var_ano] = pd.NA
 
         # -------------------------------------------------------------------
         # AJUSTE: Textos concisos para o Impacto em Maquinário (IA)
         # -------------------------------------------------------------------
         def gerar_insight(row):
             cultura = str(row['Produto / Cultura']).lower()
-            var = row[coluna_var]
+            var = row[coluna_var_mes]
             
             if pd.isna(var): return "-"
             
@@ -317,7 +339,7 @@ class AgroETL:
 
         df_exibicao['Impacto em Maquinário (IA)'] = df_exibicao.apply(gerar_insight, axis=1)
 
-        cols_numericas = [c for c in df_exibicao.columns if c not in ['Produto / Cultura', coluna_var, 'Impacto em Maquinário (IA)']]
+        cols_numericas = [c for c in df_exibicao.columns if c not in ['Produto / Cultura', coluna_var_mes, coluna_var_ano, 'Impacto em Maquinário (IA)']]
         for col in cols_numericas:
             df_exibicao[col] = pd.to_numeric(df_exibicao[col], errors='coerce').fillna(0)
         df_exibicao = df_exibicao[(df_exibicao[cols_numericas] != 0).any(axis=1)]
@@ -341,24 +363,24 @@ class AgroETL:
 
         try:
             total_culturas = len(df_exibicao)
-            valid_vars = df_exibicao.dropna(subset=[coluna_var])
+            valid_vars = df_exibicao.dropna(subset=[coluna_var_mes])
             if not valid_vars.empty:
-                max_idx = valid_vars[coluna_var].idxmax()
-                min_idx = valid_vars[coluna_var].idxmin()
+                max_idx = valid_vars[coluna_var_mes].idxmax()
+                min_idx = valid_vars[coluna_var_mes].idxmin()
                 
                 maior_alta_prod = valid_vars.loc[max_idx, 'Produto / Cultura']
-                maior_alta_val = valid_vars.loc[max_idx, coluna_var]
+                maior_alta_val = valid_vars.loc[max_idx, coluna_var_mes]
                 str_alta = f"{maior_alta_prod} (+{maior_alta_val:.1f}%)"
                 
                 maior_queda_prod = valid_vars.loc[min_idx, 'Produto / Cultura']
-                maior_queda_val = valid_vars.loc[min_idx, coluna_var]
+                maior_queda_val = valid_vars.loc[min_idx, coluna_var_mes]
                 str_queda = f"{maior_queda_prod} ({maior_queda_val:.1f}%)"
             else:
                 str_alta, str_queda = "-", "-"
         except:
             total_culturas = 0; str_alta = "-"; str_queda = "-"
 
-        cols_formatar_cores = [c for c in [coluna_var] if c in df_exibicao.columns]
+        cols_formatar_cores = [c for c in [coluna_var_mes, coluna_var_ano] if c in df_exibicao.columns]
         html = (df_exibicao.style.hide(axis="index")
                 .map(formatar_cores, subset=cols_formatar_cores)
                 .format("{:.2f}%", subset=cols_formatar_cores, na_rep="-")
