@@ -47,6 +47,15 @@ class AgroScraper:
         links = soup.find_all('a', href=True)
         planilhas_baixadas = 0
 
+        # Identifica dinamicamente qual é o ano mais recente que o governo está publicando
+        anos_nos_links = []
+        for link in links:
+            h = link.get('href', '').lower()
+            if '.xls' in h:
+                anos_nos_links.extend([int(x) for x in re.findall(r'(20[1-3]\d)', h + (link.text or ""))])
+        maior_ano_gov = max(anos_nos_links) if anos_nos_links else datetime.now().year
+        anos_antigos = [str(ano) for ano in range(2010, maior_ano_gov)]
+
         for arquivo_antigo in glob.glob(os.path.join(self.dir_downloads, "*.xls*")):
             os.remove(arquivo_antigo)
 
@@ -66,8 +75,8 @@ class AgroScraper:
                 if 'vbp' not in nome_arquivo and 'vbp' not in href_lower and 'brasil' not in href_lower:
                     continue
 
-                # Bloqueia o download de arquivos dos meses de 2024 e 2025. O histórico anual já está na base de 2026!
-                if any(ano in nome_arquivo or ano in href_lower or ano in texto_link for ano in ['2023', '2024', '2025']):
+                # Bloqueia o download de arquivos de anos anteriores. O histórico anual já vem consolidado na base vigente!
+                if any(ano in nome_arquivo or ano in href_lower or ano in texto_link for ano in anos_antigos):
                     continue
 
                 caminho_salvar = os.path.join(self.dir_downloads, nome_arquivo)
@@ -295,24 +304,29 @@ class AgroETL:
 
         df_exibicao = df_exibicao.rename(columns={col_produto_str: 'Produto / Cultura'})
 
-        coluna_var_mes = 'Variação vs Mês Anterior (%)'
         if len(colunas_ano_maximo) >= 2:
             col_atual = colunas_ano_maximo[-1]
             col_ant = colunas_ano_maximo[-2]
+            v_atual = versoes[-1]
+            v_ant = versoes[-2]
+            coluna_var_mes = f'Variação Mês ({v_atual} vs {v_ant})'
             
             df_exibicao[col_atual] = pd.to_numeric(df_exibicao[col_atual], errors='coerce').fillna(0)
             df_exibicao[col_ant] = pd.to_numeric(df_exibicao[col_ant], errors='coerce').fillna(0)
             df_exibicao[coluna_var_mes] = ((df_exibicao[col_atual] - df_exibicao[col_ant]) / df_exibicao[col_ant].replace(0, pd.NA)) * 100
         else:
+            coluna_var_mes = 'Variação Mês (%)'
             df_exibicao[coluna_var_mes] = pd.NA
 
         # Variação vs Ano Anterior
-        coluna_var_ano = f'Variação {ano_maximo} vs {ano_anterior} (%)'
         if colunas_ano_maximo and ano_anterior in df_exibicao.columns:
             col_atual = colunas_ano_maximo[-1]
+            v_atual = versoes[-1]
+            coluna_var_ano = f'Variação Ano ({v_atual} vs {ano_anterior})'
             df_exibicao[ano_anterior] = pd.to_numeric(df_exibicao[ano_anterior], errors='coerce').fillna(0)
             df_exibicao[coluna_var_ano] = ((df_exibicao[col_atual] - df_exibicao[ano_anterior]) / df_exibicao[ano_anterior].replace(0, pd.NA)) * 100
         else:
+            coluna_var_ano = f'Variação Ano ({ano_maximo} vs {ano_anterior})'
             df_exibicao[coluna_var_ano] = pd.NA
             
 
@@ -422,7 +436,7 @@ class AgroETL:
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
-                <title>Dashboard VBP - Estilo Executivo</title>
+                <title>Painel Renda Agrícola</title>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
                 <style>
                     :root {{
