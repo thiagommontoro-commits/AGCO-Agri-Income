@@ -56,8 +56,9 @@ class AgroScraper:
                 url_completa = urljoin(self.url, href) 
                 nome_arquivo = url_completa.split('/')[-1].split('?')[0].lower()
                 
-                # Foca EXCLUSIVAMENTE nos dados do VBP Completo / VBP Brasil
-                if 'completo' not in nome_arquivo and 'vbpbrasil' not in nome_arquivo:
+                # Filtra arquivos relevantes: busca por termos mais genéricos do VBP
+                if not any(termo in nome_arquivo for termo in ['vbp', 'valor', 'producao', 'agropecuario']):
+                    logging.info(f"Ignorando arquivo '{nome_arquivo}' - nome não contém termos relevantes (VBP, Valor, Producao, Agropecuario).")
                     continue
                 
                 # Filtra apenas os arquivos do ano atual em diante (ignora anos anteriores)
@@ -65,7 +66,7 @@ class AgroScraper:
                 match_ano = re.search(r'\d{4}', nome_arquivo)
                 if match_ano:
                     ano_arquivo = int(match_ano.group())
-                    if ano_arquivo < ano_atual:
+                    if ano_arquivo < (ano_atual - 1):
                         continue
 
                 caminho_salvar = os.path.join(self.dir_downloads, nome_arquivo)
@@ -341,26 +342,27 @@ class AgroETL:
 
         try:
             total_culturas = len(df_exibicao)
-            valid_vars = df_exibicao.dropna(subset=[coluna_var])
+            valid_vars = df_exibicao.dropna(subset=[coluna_var_mes])
             if not valid_vars.empty:
-                max_idx = valid_vars[coluna_var].idxmax()
-                min_idx = valid_vars[coluna_var].idxmin()
+                max_idx = valid_vars[coluna_var_mes].idxmax()
+                min_idx = valid_vars[coluna_var_mes].idxmin()
                 
                 maior_alta_prod = valid_vars.loc[max_idx, 'Produto / Cultura']
-                maior_alta_val = valid_vars.loc[max_idx, coluna_var]
+                maior_alta_val = valid_vars.loc[max_idx, coluna_var_mes]
                 str_alta = f"{maior_alta_prod} (+{maior_alta_val:.1f}%)"
                 
                 maior_queda_prod = valid_vars.loc[min_idx, 'Produto / Cultura']
-                maior_queda_val = valid_vars.loc[min_idx, coluna_var]
+                maior_queda_val = valid_vars.loc[min_idx, coluna_var_mes]
                 str_queda = f"{maior_queda_prod} ({maior_queda_val:.1f}%)"
             else:
                 str_alta, str_queda = "-", "-"
         except:
             total_culturas = 0; str_alta = "-"; str_queda = "-"
 
+        cols_formatar_cores = [c for c in [coluna_var_mes, coluna_var_ano] if c in df_exibicao.columns]
         html = (df_exibicao.style.hide(axis="index")
-                .map(formatar_cores, subset=[coluna_var] if coluna_var in df_exibicao.columns else [])
-                .format("{:.2f}%", subset=[coluna_var], na_rep="-")
+                .map(formatar_cores, subset=cols_formatar_cores)
+                .format("{:.2f}%", subset=cols_formatar_cores, na_rep="-")
                 .format(formata_br, subset=cols_numericas)
                 .to_html())
         
