@@ -343,8 +343,8 @@ class AgroETL:
             if pd.isna(val) or isinstance(val, str): return ''
             try:
                 v = float(val)
-                if v > 0: return 'color: #27ae60; font-weight: bold;'
-                if v < 0: return 'color: #e74c3c; font-weight: bold;'
+                if v > 0: return 'color: #107C41; font-weight: 700;' /* Verde Executivo */
+                if v < 0: return 'color: #BA0C2F; font-weight: 700;' /* Vermelho AGCO */
             except: pass
             return ''
             
@@ -388,116 +388,100 @@ class AgroETL:
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
-                <title>Dashboard VBP - Agronegócio</title>
+                <title>Painel Executivo VBP - AGCO</title>
                 <style>
                     :root {{
-                        --primary-color: #2c3e50;
-                        --accent-color: #BA0C2F;
-                        --bg-color: #f4f6f9;
-                        --card-bg: #ffffff;
-                        --text-color: #333333;
+                        --agco-red: #BA0C2F;
+                        --agco-dark: #2c2c2c;
+                        --bg-light: #e9ecef;
                     }}
-                    body {{ 
-                        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-                        background-color: var(--bg-color); 
-                        margin: 0; 
-                        padding: 20px 40px; 
-                        color: var(--text-color); 
+                    body {{
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        background-color: var(--bg-light);
+                        margin: 0;
+                        padding: 30px;
+                        color: #333;
                     }}
-                    .dashboard-header {{
+                    .dashboard-container {{
+                        background-color: #ffffff;
+                        border-radius: 8px;
+                        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+                        padding: 30px 40px;
+                        border-top: 6px solid var(--agco-red);
+                        max-width: 1500px;
+                        margin: 0 auto;
+                    }}
+                    .header {{
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        background: var(--card-bg);
-                        padding: 20px 30px;
-                        border-radius: 10px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+                        border-bottom: 2px solid #f0f0f0;
+                        padding-bottom: 15px;
                         margin-bottom: 25px;
-                        border-left: 6px solid var(--primary-color);
                     }}
-                    .dashboard-header h1 {{ margin: 0; font-size: 24px; color: var(--primary-color); }}
-                    .dashboard-header p {{ margin: 5px 0 0 0; color: #7f8c8d; font-size: 14px; }}
+                    .title-area h2 {{ color: var(--agco-dark); margin: 0 0 5px 0; font-size: 1.8em; font-weight: 700; }}
+                    .title-area p {{ color: #666; margin: 0; font-size: 0.95em; }}
+                    .logo-text {{ font-size: 32px; font-weight: 900; color: var(--agco-dark); letter-spacing: 1.5px; margin: 0; }}
+                    .logo-text span {{ color: var(--agco-red); }}
                     
                     /* Blocos de Destaques (KPIs) */
-                    .kpi-grid {{
-                        display: grid;
-                        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                        gap: 20px;
-                        margin-bottom: 25px;
+                    .kpi-grid {{ display: flex; gap: 20px; margin-bottom: 30px; }}
+                    .kpi-card {{ 
+                        flex: 1; 
+                        background: #fff; 
+                        padding: 20px; 
+                        border-radius: 6px; 
+                        box-shadow: 0 3px 10px rgba(0,0,0,0.06); 
+                        border: 1px solid #eaeaea;
+                        border-left: 5px solid var(--agco-dark);
                     }}
-                    .kpi-card {{
-                        background: var(--card-bg);
-                        padding: 20px;
-                        border-radius: 10px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-                        border-top: 4px solid #bdc3c7;
-                        transition: transform 0.2s;
-                    }}
-                    .kpi-card:hover {{ transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); }}
-                    .kpi-card.positive {{ border-top-color: #27ae60; }}
-                    .kpi-card.negative {{ border-top-color: #e74c3c; }}
-                    .kpi-card.brand {{ border-top-color: var(--accent-color); }}
+                    .kpi-card.brand {{ border-left-color: var(--agco-dark); }}
+                    .kpi-card.positive {{ border-left-color: #107C41; }}
+                    .kpi-card.negative {{ border-left-color: var(--agco-red); }}
                     
-                    .kpi-title {{ font-size: 12px; color: #7f8c8d; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px; }}
-                    .kpi-value {{ font-size: 22px; font-weight: 800; color: var(--primary-color); margin: 0; }}
+                    .kpi-title {{ font-size: 13px; color: #7f8c8d; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px; }}
+                    .kpi-value {{ font-size: 24px; font-weight: 800; color: var(--agco-dark); margin: 0; }}
                     
                     /* Tabela Profissional */
-                    .table-wrapper {{
-                        background: var(--card-bg);
-                        padding: 25px;
-                        border-radius: 10px;
-                        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-                        overflow-x: auto;
-                    }}
-                    table {{ border-collapse: collapse; width: 100%; font-size: 14px; }}
-                    th {{ 
-                        background-color: #f8f9fa; 
-                        color: var(--primary-color); 
-                        font-weight: 700; 
-                        text-align: center; 
-                        padding: 15px 10px; 
-                        border-bottom: 2px solid #e2e8f0; 
-                    }}
-                    td {{ 
-                        padding: 12px 10px; 
-                        border-bottom: 1px solid #e2e8f0; 
-                        text-align: right; 
-                        color: #4a5568; 
-                    }}
-                    td:first-child, th:first-child {{ text-align: left; font-weight: 600; color: var(--primary-color); }}
+                    table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 10px; }}
+                    thead th {{ background-color: var(--agco-dark); color: #ffffff; text-align: right; padding: 12px 10px; border: 1px solid #444; text-transform: uppercase; font-size: 0.9em; letter-spacing: 0.5px; }}
+                    thead th:first-child {{ text-align: left; }}
+                    tbody td {{ padding: 10px 10px; border: 1px solid #e0e0e0; text-align: right; color: #333; }}
+                    tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; background-color: #fafafa; border-right: 2px solid #ccc; }}
                     /* Mantém o texto da IA organizado para não esticar a tela infinitamente */
-                    td:last-child, th:last-child {{ text-align: left; max-width: 400px; white-space: normal; line-height: 1.5; }}
-                    tr:hover td {{ background-color: #f8fafc; }}
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 350px; white-space: normal; line-height: 1.4; border-left: 2px solid #ccc; background-color: #fcfcfc; }}
+                    tbody tr:hover td {{ background-color: #f1f1f1; }}
+                    tbody tr:nth-child(even) td:not(:first-child):not(:last-child) {{ background-color: #fafafa; }}
                 </style>
             </head>
             <body>
-                <div class="dashboard-header">
-                    <div>
-                        <h1>Painel Executivo de VBP</h1>
-                        <p>Acompanhamento de Valor Bruto da Produção com IA de Maquinário</p>
+                <div class="dashboard-container">
+                    <div class="header">
+                        <div class="title-area">
+                            <h2>Painel Executivo de VBP</h2>
+                            <p>Acompanhamento de Valor Bruto da Produção com Inteligência de Maquinário</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <h1 class="logo-text">AG<span>CO</span></h1>
+                            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.85em;">Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                        </div>
                     </div>
-                    <div style="text-align: right;">
-                        <p style="margin:0; font-weight:bold; color:var(--primary-color);">Data da Atualização</p>
-                        <p style="margin:0; color:#7f8c8d;">{datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
-                    </div>
-                </div>
 
-                <div class="kpi-grid">
-                    <div class="kpi-card brand">
-                        <div class="kpi-title">Culturas Analisadas</div>
-                        <div class="kpi-value">{total_culturas}</div>
+                    <div class="kpi-grid">
+                        <div class="kpi-card brand">
+                            <div class="kpi-title">Culturas Monitoradas</div>
+                            <div class="kpi-value">{total_culturas}</div>
+                        </div>
+                        <div class="kpi-card positive">
+                            <div class="kpi-title">Maior Alta (vs Mês Anterior)</div>
+                            <div class="kpi-value">{str_alta}</div>
+                        </div>
+                        <div class="kpi-card negative">
+                            <div class="kpi-title">Alerta de Queda (vs Mês Anterior)</div>
+                            <div class="kpi-value">{str_queda}</div>
+                        </div>
                     </div>
-                    <div class="kpi-card positive">
-                        <div class="kpi-title">Destaque de Alta (vs Anterior)</div>
-                        <div class="kpi-value">{str_alta}</div>
-                    </div>
-                    <div class="kpi-card negative">
-                        <div class="kpi-title">Alerta de Queda (vs Anterior)</div>
-                        <div class="kpi-value">{str_queda}</div>
-                    </div>
-                </div>
 
-                <div class="table-wrapper">
                     {html}
                 </div>
             </body>
