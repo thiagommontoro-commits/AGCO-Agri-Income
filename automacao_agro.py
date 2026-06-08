@@ -66,6 +66,10 @@ class AgroScraper:
                 if 'vbp' not in nome_arquivo and 'vbp' not in href_lower and 'brasil' not in href_lower:
                     continue
 
+                # Bloqueia o download de arquivos dos meses de 2024 e 2025. O histórico anual já está na base de 2026!
+                if any(ano in nome_arquivo or ano in href_lower or ano in texto_link for ano in ['2023', '2024', '2025']):
+                    continue
+
                 caminho_salvar = os.path.join(self.dir_downloads, nome_arquivo)
                 
                 logging.info(f"Baixando: {nome_arquivo}...")
@@ -311,10 +315,6 @@ class AgroETL:
         else:
             df_exibicao[coluna_var_ano] = pd.NA
             
-        # Remover as colunas dos anos anteriores da tabela final, limpando o visual para focar apenas em 2026
-        for ano in [ano_retrasado, ano_anterior]:
-            if ano in df_exibicao.columns:
-                df_exibicao = df_exibicao.drop(columns=[ano])
 
         # -------------------------------------------------------------------
         # AJUSTE: Textos concisos para o Impacto em Maquinário (IA)
@@ -331,21 +331,21 @@ class AgroETL:
             
             maquinas = ""
             if any(c in cultura for c in ['soja', 'milho', 'trigo', 'sorgo']):
-                maquinas = "Impacto maior: Tratores 240-339cv e Colheitadeiras Classe 7>"
+                maquinas = "Impacto maior: Trator Alta Potência (240-339cv) e Colheitadeiras"
             elif any(c in cultura for c in ['algodão', 'algodao']):
-                maquinas = "Impacto maior: Tratores 240-339cv e Colheitadeiras de Algodão"
+                maquinas = "Impacto maior: Trator Alta Potência (240-339cv) e Colheitadeiras"
             elif 'arroz' in cultura:
-                maquinas = "Impacto maior: Tratores 100-130cv e Colheitadeiras Arrozeiras"
+                maquinas = "Impacto maior: Trator Média Potência (100-130cv) e Colheitadeiras"
             elif any(c in cultura for c in ['café', 'cafe']):
-                maquinas = "Impacto maior: Tratores Estreitos e Colhedoras de Café"
+                maquinas = "Impacto maior: Trator Baixa Potência (Estreitos) e Colheitadeiras"
             elif 'cana' in cultura:
-                maquinas = "Impacto maior: Tratores >300cv e Colhedoras de Cana"
+                maquinas = "Impacto maior: Trator Alta Potência (>300cv) e Colheitadeiras"
             elif any(c in cultura for c in ['laranja', 'uva', 'maçã', 'maca', 'banana', 'cacau']):
-                maquinas = "Impacto maior: Tratores Fruteiros (<80cv)"
+                maquinas = "Impacto maior: Trator Baixa Potência (Fruteiros <80cv)"
             elif any(c in cultura for c in ['feijão', 'feijao', 'amendoim']):
-                maquinas = "Impacto maior: Tratores 100-140cv e Colheitadeiras Classe 5-6"
+                maquinas = "Impacto maior: Trator Média Potência (100-140cv) e Colheitadeiras"
             elif any(c in cultura for c in ['batata', 'cebola', 'tomate', 'mandioca']):
-                maquinas = "Impacto maior: Tratores Médios 100-140cv"
+                maquinas = "Impacto maior: Trator Média Potência (100-140cv)"
             else:
                 maquinas = "Impacto maior: Tratores Multiuso"
                 
@@ -422,154 +422,112 @@ class AgroETL:
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
-                <title>Painel de Renda Agrícola</title>
+                <title>Dashboard VBP - Estilo Executivo</title>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
                 <style>
                     :root {{
-                        --primary-color: #BA0C2F; /* Vermelho AGCO */
-                        --dark-color: #231F20;    /* Preto Corporativo AGCO */
-                        --bg-light: #F4F5F7;
-                        --border-color: #E2E6E9;
+                        --agco-red: #BA0C2F;
+                        --text-main: #2c3e50;
+                        --text-muted: #6c757d;
+                        --bg-page: #f4f7f6;
+                        --bg-card: #ffffff;
+                        --border-light: #e9ecef;
+                        --positive: #107C41;
+                        --negative: #D83B01;
+                        --header-bg: #1e293b;
                     }}
-                    body {{
-                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                        background-color: var(--bg-light);
-                        margin: 0;
-                        padding: 30px;
-                        color: #333;
-                        top: 0 !important;
-                    }}
-                    .skiptranslate {{ display: none !important; }} 
+                    body {{ background-color: var(--bg-page); font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 40px 20px; color: var(--text-main); }}
+                    .dashboard-container {{ background-color: var(--bg-card); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05); max-width: 1400px; margin: 0 auto; overflow: hidden; }}
+                    .header {{ display: flex; justify-content: space-between; align-items: center; background-color: var(--header-bg); padding: 30px 40px; border-bottom: 4px solid var(--agco-red); }}
+                    .title-area h2 {{ margin: 0 0 8px 0; font-size: 2.2em; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }}
+                    .title-area p {{ color: #94a3b8; margin: 0; font-size: 1.1em; font-weight: 500; }}
+                    .developer-info {{ text-align: right; color: #94a3b8; font-size: 0.9em; line-height: 1.4; }}
+                    .developer-info strong {{ color: #ffffff; font-size: 1.15em; display: block; margin-top: 4px; font-weight: 600; }}
+                    .content-area {{ padding: 30px 40px 40px 40px; }}
                     
-                    .dashboard-container {{
-                        background-color: #ffffff;
-                        border-radius: 6px;
-                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-                        padding: 25px 30px;
-                        border-top: 5px solid var(--primary-color);
-                        max-width: 1400px;
-                        margin: 0 auto;
-                    }}
-                    .header {{
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        border-bottom: 1px solid var(--border-color);
-                        padding-bottom: 15px;
-                        margin-bottom: 25px;
-                    }}
-                    .title-area h2 {{ color: var(--dark-color); margin: 0 0 5px 0; font-size: 1.6em; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }}
-                    .title-area p {{ color: #666; margin: 0; font-size: 0.9em; }}
+                    .info-strip {{ display: flex; flex-wrap: wrap; justify-content: space-between; background-color: #f8f9fa; border-left: 5px solid var(--agco-red); padding: 15px 20px; border-radius: 0 8px 8px 0; margin-bottom: 30px; font-size: 0.95em; color: #495057; gap: 15px; }}
+                    .info-item strong {{ color: var(--text-main); }}
                     
-                    /* KPIs - Menores e Polidos */
-                    .kpi-grid {{ display: flex; gap: 15px; margin-bottom: 25px; }}
-                    .kpi-card {{ 
-                        flex: 1; 
-                        background: #fff; 
-                        padding: 8px 12px; 
-                        border-radius: 3px; 
-                        box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
-                        border: 1px solid var(--border-color);
-                        border-left: 4px solid var(--dark-color);
-                        display: flex;
-                        flex-direction: column;
-                        justify-content: center;
-                    }}
-                    .kpi-card.brand {{ border-left-color: var(--primary-color); }}
-                    .kpi-card.positive {{ border-left-color: #107C41; }}
-                    .kpi-card.negative {{ border-left-color: var(--primary-color); }}
+                    .kpi-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }}
+                    .kpi-card {{ background: #fff; border: 1px solid var(--border-light); border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); position: relative; overflow: hidden; transition: transform 0.2s ease; }}
+                    .kpi-card:hover {{ transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.05); }}
+                    .kpi-card::before {{ content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; }}
+                    .kpi-card.total::before {{ background-color: var(--text-main); }}
+                    .kpi-card.positive::before {{ background-color: var(--positive); }}
+                    .kpi-card.negative::before {{ background-color: var(--negative); }}
+                    .kpi-title {{ font-size: 0.85em; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; }}
+                    .kpi-value {{ font-size: 2em; font-weight: 800; color: var(--text-main); margin-bottom: 5px; }}
                     
-                    .kpi-title {{ font-size: 9px; color: #777; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }}
-                    .kpi-value {{ font-size: 15px; font-weight: 800; color: var(--dark-color); margin: 0; }}
+                    .table-container {{ overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-light); }}
+                    table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; background-color: #fff; }}
+                    thead {{ background-color: var(--text-main); color: #ffffff; }}
+                    th {{ padding: 15px; text-align: center; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; font-size: 0.85em; white-space: nowrap; border: none; }}
+                    th:first-child {{ text-align: left; position: sticky; left: 0; background-color: var(--text-main); z-index: 2; }}
+                    td {{ padding: 12px 15px; text-align: center; border-bottom: 1px solid var(--border-light); color: #495057; font-variant-numeric: tabular-nums; border-top: none; border-left: none; border-right: none; }}
+                    td:first-child {{ text-align: left; font-weight: 600; color: var(--text-main); position: sticky; left: 0; background-color: #fff; border-right: 2px solid var(--border-light); z-index: 1; }}
+                    tbody tr:hover td {{ background-color: #f8f9fa; }}
                     
-                    /* Botões e Ações */
-                    .action-buttons {{ display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }}
-                    .btn {{ 
-                        background: #fff; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; 
-                        cursor: pointer; font-size: 11px; font-weight: 600; color: var(--dark-color);
-                        transition: all 0.2s;
-                    }}
-                    .btn:hover {{ background: var(--bg-light); border-color: var(--dark-color); }}
-                    .btn-excel {{ background: #107C41; color: white; border-color: #107C41; }}
-                    .btn-excel:hover {{ background: #0c6132; border-color: #0c6132; }}
-
-                    /* Tabela */
-                    table {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
-                    thead th {{ background-color: var(--dark-color); color: #fff; text-align: center; padding: 12px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: none; }}
-                    thead th:first-child {{ text-align: left; }}
-                    tbody tr {{ border-bottom: 1px solid var(--border-color); }}
-                    tbody td {{ padding: 8px 10px; text-align: center; color: #444; border: none; }}
-                    tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: var(--dark-color); }}
-                    /* Controle super restrito da largura da coluna de IA */
-                    thead th:last-child {{ text-align: left; max-width: 180px; }}
-                    tbody td:last-child {{ text-align: left; max-width: 180px; line-height: 1.3; font-size: 11px; color: #000000; font-weight: 600; white-space: normal; }}
-                    tbody tr:hover {{ background-color: #fafafa; }}
+                    /* Coluna IA - Layout Moderno com Letra Preta e Fundo Claro */
+                    thead th:last-child {{ text-align: left; max-width: 180px; background-color: var(--text-main); }}
+                    tbody td:last-child {{ text-align: left; max-width: 180px; line-height: 1.4; font-size: 11.5px; color: #000000; font-weight: 700; white-space: normal; background-color: #f4f7f6; border-left: 2px solid var(--border-light); }}
+                    
+                    .action-buttons {{ margin-top: 25px; text-align: right; }}
+                    .btn-excel {{ background: #107C41; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }}
+                    .btn-excel:hover {{ background: #0c6132; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }}
                 </style>
             </head>
             <body>
-                <div id="google_translate_element" style="display:none;"></div>
-                
                 <div class="dashboard-container">
                     <div class="header">
                         <div class="title-area">
-                            <h2>Painel de renda agrícola</h2>
-                            <p>Acompanhamento de Valor Bruto da Produção com Inteligência de Mercado</p>
-                            <p style="margin-top: 5px; font-size: 0.85em; color: var(--primary-color); font-weight: 600;">Desenvolvido pela área da AGCO Reporting & Analytics</p>
+                            <h2>Painel Executivo de Acompanhamento VBP</h2>
+                            <p>Evolução de Safra e Valor Bruto da Produção Nacional com IA</p>
                         </div>
-                        <div style="text-align: right;">
-                            <p style="margin: 0; color: #666; font-size: 0.85em;">Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
-                            <div class="action-buttons">
-                                <button class="btn" onclick="doGTranslate('pt')">🇧🇷 PT</button>
-                                <button class="btn" onclick="doGTranslate('en')">🇺🇸 EN</button>
-                                <button class="btn" onclick="doGTranslate('es')">🇪🇸 ES</button>
-                                <button class="btn btn-excel" onclick="exportExcel()">📊 Exportar Excel</button>
+                        <div class="developer-info">
+                            Desenvolvido por<br>
+                            <strong>Reporting & Analytics AGCO</strong>
+                        </div>
+                    </div>
+
+                    <div class="content-area">
+                        <div class="info-strip">
+                            <div class="info-item"><strong>Fonte dos Dados:</strong> Ministério da Agricultura do Brasil</div>
+                            <div class="info-item"><strong>Última Atualização:</strong> {datetime.now().strftime('%d/%m/%Y %H:%M')}</div>
+                            <div class="info-item"><strong>Cenário:</strong> Base de projeções consolidada ({ano_maximo})</div>
+                        </div>
+
+                        <div class="kpi-grid">
+                            <div class="kpi-card total">
+                                <div class="kpi-title">Culturas Monitoradas</div>
+                                <div class="kpi-value">{total_culturas}</div>
+                            </div>
+                            <div class="kpi-card positive">
+                                <div class="kpi-title">Maior Alta ({coluna_var_mes})</div>
+                                <div class="kpi-value" style="font-size: 1.4em;">{str_alta}</div>
+                            </div>
+                            <div class="kpi-card negative">
+                                <div class="kpi-title">Alerta de Queda ({coluna_var_mes})</div>
+                                <div class="kpi-value" style="font-size: 1.4em;">{str_queda}</div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="kpi-grid">
-                        <div class="kpi-card brand">
-                            <div class="kpi-title">Culturas Monitoradas</div>
-                            <div class="kpi-value">{total_culturas}</div>
+                        <div class="table-container">
+                            {html}
                         </div>
-                        <div class="kpi-card positive">
-                            <div class="kpi-title">Maior Alta (vs Mês Anterior)</div>
-                            <div class="kpi-value">{str_alta}</div>
-                        </div>
-                        <div class="kpi-card negative">
-                            <div class="kpi-title">Alerta de Queda (vs Mês Anterior)</div>
-                            <div class="kpi-value">{str_queda}</div>
+                        
+                        <div class="action-buttons">
+                            <button class="btn-excel" onclick="exportExcel()">📊 Exportar Base Excel</button>
                         </div>
                     </div>
-
-                    {html}
                 </div>
 
                 <script type="text/javascript">
-                    function googleTranslateElementInit() {{
-                        new google.translate.TranslateElement({{pageLanguage: 'pt', autoDisplay: false}}, 'google_translate_element');
-                    }}
-                    
-                    function doGTranslate(lang) {{
-                        if (lang === 'pt') {{
-                            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-                            location.reload();
-                            return;
-                        }}
-                        var select = document.querySelector('select.goog-te-combo');
-                        if (select) {{
-                            select.value = lang;
-                            select.dispatchEvent(new Event('change'));
-                        }}
-                    }}
-                    
                     function exportExcel() {{
                         var table = document.querySelector("table");
                         var wb = XLSX.utils.table_to_book(table, {{sheet: "Painel VBP"}});
                         XLSX.writeFile(wb, "Painel_VBP_Agro.xlsx");
                     }}
                 </script>
-                <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </body>
             </html>
             ''')
