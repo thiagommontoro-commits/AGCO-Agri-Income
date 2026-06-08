@@ -292,28 +292,28 @@ class AgroETL:
             
             maquinas = ""
             if any(c in cultura for c in ['soja', 'milho', 'trigo', 'arroz', 'algodão', 'algodao', 'sorgo']):
-                maquinas = "Alta Potência, Colheitadeiras e Plantadeiras"
+                maquinas = "Alta Pot./Colh."
             elif any(c in cultura for c in ['café', 'cafe']):
-                maquinas = "Tratores Especiais e Colheitadeiras"
+                maquinas = "Estreitos/Colh."
             elif 'cana' in cultura:
-                maquinas = "Tratores Pesados e Colheitadeiras de Cana"
+                maquinas = "Pesados/Colh."
             elif any(c in cultura for c in ['laranja', 'uva', 'maçã', 'maca', 'banana', 'cacau']):
-                maquinas = "Tratores Leves e Fruteiros"
+                maquinas = "Fruteiros"
             elif any(c in cultura for c in ['feijão', 'feijao', 'batata', 'cebola', 'tomate', 'mandioca', 'amendoim']):
-                maquinas = "Tratores Médios e Implementos"
+                maquinas = "Médios/Impl."
             else:
-                maquinas = "Tratores Multiuso"
+                maquinas = "Multiuso"
                 
             if var > 2:
-                return f"📈 OPORTUNIDADE: Foco na venda de {maquinas}."
+                return f"📈 Alta: {maquinas}"
             elif var > 0:
-                return f"↗️ AQUECIMENTO: Renovação de {maquinas}."
+                return f"↗️ Renovar: {maquinas}"
             elif var < -2:
-                return f"🔴 ALERTA: Queda em vendas. Foco em Pós-Venda ({maquinas})."
+                return f"🔴 Pós-venda: {maquinas}"
             elif var < 0:
-                return f"↘️ CAUTELA: Retenção de caixa; giro lento ({maquinas})."
+                return f"↘️ Reter: {maquinas}"
             else:
-                return f"➡️ ESTÁVEL: Fluxo de reposição normal ({maquinas})."
+                return f"➡️ Estável: {maquinas}"
 
         df_exibicao['Impacto em Maquinário (IA)'] = df_exibicao.apply(gerar_insight, axis=1)
 
@@ -419,8 +419,8 @@ class AgroETL:
                     .kpi-card {{ 
                         flex: 1; 
                         background: #fff; 
-                        padding: 12px 15px; 
-                        border-radius: 4px; 
+                        padding: 8px 12px; 
+                        border-radius: 3px; 
                         box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
                         border: 1px solid var(--border-color);
                         border-left: 4px solid var(--dark-color);
@@ -432,8 +432,8 @@ class AgroETL:
                     .kpi-card.positive {{ border-left-color: #107C41; }}
                     .kpi-card.negative {{ border-left-color: var(--primary-color); }}
                     
-                    .kpi-title {{ font-size: 10px; color: #777; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }}
-                    .kpi-value {{ font-size: 17px; font-weight: 800; color: var(--dark-color); margin: 0; }}
+                    .kpi-title {{ font-size: 9px; color: #777; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 2px; }}
+                    .kpi-value {{ font-size: 15px; font-weight: 800; color: var(--dark-color); margin: 0; }}
                     
                     /* Botões e Ações */
                     .action-buttons {{ display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }}
@@ -451,9 +451,10 @@ class AgroETL:
                     thead th {{ background-color: var(--dark-color); color: #fff; text-align: right; padding: 12px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: none; }}
                     thead th:first-child {{ text-align: left; }}
                     tbody tr {{ border-bottom: 1px solid var(--border-color); }}
-                    tbody td {{ padding: 10px; text-align: right; color: #444; border: none; }}
+                    tbody td {{ padding: 8px 10px; text-align: right; color: #444; border: none; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: var(--dark-color); }}
-                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 250px; line-height: 1.3; font-size: 12px; color: #555; }}
+                    /* Controle super restrito da largura da coluna de IA */
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.1; font-size: 10px; color: #555; white-space: normal; }}
                     tbody tr:hover {{ background-color: #fafafa; }}
                 </style>
             </head>
