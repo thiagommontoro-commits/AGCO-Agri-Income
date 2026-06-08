@@ -390,12 +390,14 @@ class AgroETL:
             <head>
                 <meta charset="utf-8">
                 <title>Painel Executivo VBP</title>
+                <!-- Script do SheetJS para Exportação em Excel -->
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
                 <style>
                     :root {{
                         --primary-color: #005a9c;
                         --dark-color: #000000; /* Preto absoluto para o cabeçalho */
                         --danger-color: #d9534f;
-                        --bg-light: #f4f7f6;
+                        --bg-light: #eef1f5;
                     }}
                     body {{
                         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -403,12 +405,15 @@ class AgroETL:
                         margin: 0;
                         padding: 30px;
                         color: #333;
+                        top: 0 !important; /* Corrige margem do Google Translate */
                     }}
+                    .skiptranslate {{ display: none !important; }} /* Esconde a barra do Google */
+                    
                     .dashboard-container {{
-                        background-color: #ffffff;
+                        background-color: #f8fbfb;
                         border-radius: 8px;
                         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-                        padding: 30px 40px;
+                        padding: 20px 30px;
                         border-top: 6px solid var(--primary-color);
                         max-width: 1500px;
                         margin: 0 auto;
@@ -418,18 +423,18 @@ class AgroETL:
                         justify-content: space-between;
                         align-items: center;
                         border-bottom: 2px solid #f0f0f0;
-                        padding-bottom: 15px;
-                        margin-bottom: 25px;
+                        padding-bottom: 10px;
+                        margin-bottom: 20px;
                     }}
                     .title-area h2 {{ color: var(--dark-color); margin: 0 0 5px 0; font-size: 1.8em; font-weight: 700; }}
                     .title-area p {{ color: #666; margin: 0; font-size: 0.95em; }}
                     
                     /* Blocos de Destaques (KPIs) */
-                    .kpi-grid {{ display: flex; gap: 20px; margin-bottom: 30px; }}
+                    .kpi-grid {{ display: flex; gap: 15px; margin-bottom: 20px; }}
                     .kpi-card {{ 
                         flex: 1; 
-                        background: #fff; 
-                        padding: 20px; 
+                        background: #f0f4f8; 
+                        padding: 12px 15px; 
                         border-radius: 6px; 
                         box-shadow: 0 3px 10px rgba(0,0,0,0.06); 
                         border: 1px solid #eaeaea;
@@ -439,8 +444,8 @@ class AgroETL:
                     .kpi-card.positive {{ border-left-color: #107C41; }}
                     .kpi-card.negative {{ border-left-color: var(--danger-color); }}
                     
-                    .kpi-title {{ font-size: 13px; color: #7f8c8d; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 10px; }}
-                    .kpi-value {{ font-size: 24px; font-weight: 800; color: var(--dark-color); margin: 0; }}
+                    .kpi-title {{ font-size: 11px; color: #7f8c8d; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 5px; }}
+                    .kpi-value {{ font-size: 18px; font-weight: 800; color: var(--dark-color); margin: 0; }}
                     
                     /* Tabela Profissional */
                     table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 10px; }}
@@ -450,11 +455,14 @@ class AgroETL:
                     tbody td {{ padding: 14px 12px; border: none; text-align: right; color: #444; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: #111; }}
                     /* Limita a largura da coluna de IA e ajusta a fonte para um equilíbrio elegante */
-                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 250px; line-height: 1.3; font-size: 0.95em; color: #666; }}
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 180px; line-height: 1.2; font-size: 0.9em; color: #666; }}
                     tbody tr:hover {{ background-color: #f8f9fa; }}
                 </style>
             </head>
             <body>
+                <!-- Elemento oculto do Google Translate -->
+                <div id="google_translate_element" style="display:none;"></div>
+                
                 <div class="dashboard-container">
                     <div class="header">
                         <div class="title-area">
@@ -463,7 +471,13 @@ class AgroETL:
                             <p style="margin-top: 5px; font-size: 0.85em; color: var(--primary-color); font-weight: 600;">Desenvolvido pela área da AGCO Reporting & Analytics</p>
                         </div>
                         <div style="text-align: right;">
-                            <p style="margin: 5px 0 0 0; color: #666; font-size: 0.85em;">Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                            <p style="margin: 0; color: #666; font-size: 0.85em;">Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
+                            <div class="action-buttons">
+                                <button class="btn" onclick="doGTranslate('pt')">🇧🇷 PT</button>
+                                <button class="btn" onclick="doGTranslate('en')">🇺🇸 EN</button>
+                                <button class="btn" onclick="doGTranslate('es')">🇪🇸 ES</button>
+                                <button class="btn btn-excel" onclick="exportExcel()">📊 Exportar Excel</button>
+                            </div>
                         </div>
                     </div>
 
@@ -484,6 +498,36 @@ class AgroETL:
 
                     {html}
                 </div>
+
+                <script type="text/javascript">
+                    // Inicializa o Google Translate oculto
+                    function googleTranslateElementInit() {{
+                        new google.translate.TranslateElement({{pageLanguage: 'pt', autoDisplay: false}}, 'google_translate_element');
+                    }}
+                    
+                    // Dispara a tradução
+                    function doGTranslate(lang) {{
+                        if (lang === 'pt') {{
+                            // Para voltar ao original, limpa o cookie do Google Translate e recarrega
+                            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                            location.reload();
+                            return;
+                        }}
+                        var select = document.querySelector('select.goog-te-combo');
+                        if (select) {{
+                            select.value = lang;
+                            select.dispatchEvent(new Event('change'));
+                        }}
+                    }}
+                    
+                    // Exporta a tabela formatada para Excel
+                    function exportExcel() {{
+                        var table = document.querySelector("table");
+                        var wb = XLSX.utils.table_to_book(table, {{sheet: "Painel VBP"}});
+                        XLSX.writeFile(wb, "Painel_VBP_Agro.xlsx");
+                    }}
+                </script>
+                <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </body>
             </html>
             ''')
