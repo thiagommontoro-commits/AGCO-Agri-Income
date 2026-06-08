@@ -449,13 +449,9 @@ class AgroETL:
                     tbody tr {{ border-bottom: 1px solid #eaeaea; }} /* Linha sutil apenas na horizontal */
                     tbody td {{ padding: 14px 12px; border: none; text-align: right; color: #444; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: #111; }}
-                    /* Mantém o texto da IA organizado para não esticar a tela infinitamente */
-                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 350px; white-space: normal; line-height: 1.5; }}
+                    /* Mantém o texto da IA em uma única linha para reduzir a altura */
+                    thead th:last-child, tbody td:last-child {{ text-align: left; white-space: nowrap; }}
                     tbody tr:hover {{ background-color: #f8f9fa; }}
-                    
-                    /* Rodapé (Assinatura) */
-                    .footer-note {{ margin-top: 40px; padding-top: 20px; border-top: 1px solid #f0f0f0; text-align: center; color: #888; font-size: 0.9em; }}
-                    .footer-note strong {{ color: var(--primary-color); }}
                 </style>
             </head>
             <body>
@@ -464,6 +460,7 @@ class AgroETL:
                         <div class="title-area">
                             <h2>Painel Executivo de VBP</h2>
                             <p>Acompanhamento de Valor Bruto da Produção com Inteligência de Mercado</p>
+                            <p style="margin-top: 5px; font-size: 0.85em; color: var(--primary-color); font-weight: 600;">Desenvolvido pela área da AGCO Reporting & Analytics</p>
                         </div>
                         <div style="text-align: right;">
                             <p style="margin: 5px 0 0 0; color: #666; font-size: 0.85em;">Atualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}</p>
@@ -486,10 +483,6 @@ class AgroETL:
                     </div>
 
                     {html}
-                    
-                    <div class="footer-note">
-                        Desenvolvido pela área da <strong>AGCO Reporting & Analytics</strong>
-                    </div>
                 </div>
             </body>
             </html>
