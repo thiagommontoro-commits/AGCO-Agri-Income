@@ -313,33 +313,38 @@ class AgroETL:
             if pd.isna(var): return "-"
             
             maquinas = ""
-            if any(c in cultura for c in ['soja', 'milho', 'trigo', 'arroz', 'algodão', 'algodao', 'sorgo']):
-                maquinas = "Alta Pot./Colh."
+            if any(c in cultura for c in ['soja', 'milho', 'trigo', 'sorgo']):
+                maquinas = "Impacto maior: Tratores 240-339cv e Colheitadeiras Classe 7>"
+            elif any(c in cultura for c in ['algodão', 'algodao']):
+                maquinas = "Impacto maior: Tratores 240-339cv e Colheitadeiras de Algodão"
+            elif 'arroz' in cultura:
+                maquinas = "Impacto maior: Tratores 100-130cv e Colheitadeiras Arrozeiras"
             elif any(c in cultura for c in ['café', 'cafe']):
-                maquinas = "Estreitos/Colh."
+                maquinas = "Impacto maior: Tratores Estreitos e Colhedoras de Café"
             elif 'cana' in cultura:
-                maquinas = "Pesados/Colh."
+                maquinas = "Impacto maior: Tratores >300cv e Colhedoras de Cana"
             elif any(c in cultura for c in ['laranja', 'uva', 'maçã', 'maca', 'banana', 'cacau']):
-                maquinas = "Fruteiros"
-            elif any(c in cultura for c in ['feijão', 'feijao', 'batata', 'cebola', 'tomate', 'mandioca', 'amendoim']):
-                maquinas = "Médios/Impl."
+                maquinas = "Impacto maior: Tratores Fruteiros (<80cv)"
+            elif any(c in cultura for c in ['feijão', 'feijao', 'amendoim']):
+                maquinas = "Impacto maior: Tratores 100-140cv e Colheitadeiras Classe 5-6"
+            elif any(c in cultura for c in ['batata', 'cebola', 'tomate', 'mandioca']):
+                maquinas = "Impacto maior: Tratores Médios 100-140cv"
             else:
-                maquinas = "Multiuso"
+                maquinas = "Impacto maior: Tratores Multiuso"
                 
             if var > 2:
-                return f"📈 Alta: {maquinas}"
+                return f"📈 {maquinas}"
             elif var > 0:
-                return f"↗️ Renovar: {maquinas}"
+                return f"↗️ {maquinas}"
             elif var < -2:
-                return f"🔴 Pós-venda: {maquinas}"
+                return f"🔴 {maquinas}"
             elif var < 0:
-                return f"↘️ Reter: {maquinas}"
+                return f"↘️ {maquinas}"
             else:
-                return f"➡️ Estável: {maquinas}"
 
-        df_exibicao['Impacto em Maquinário (IA)'] = df_exibicao.apply(gerar_insight, axis=1)
+        df_exibicao['Impacto Máquinas Agrícolas'] = df_exibicao.apply(gerar_insight, axis=1)
 
-        cols_numericas = [c for c in df_exibicao.columns if c not in ['Produto / Cultura', coluna_var_mes, coluna_var_ano, 'Impacto em Maquinário (IA)']]
+        cols_numericas = [c for c in df_exibicao.columns if c not in ['Produto / Cultura', coluna_var_mes, coluna_var_ano, 'Impacto Máquinas Agrícolas']]
         for col in cols_numericas:
             df_exibicao[col] = pd.to_numeric(df_exibicao[col], errors='coerce').fillna(0)
         df_exibicao = df_exibicao[(df_exibicao[cols_numericas] != 0).any(axis=1)]
@@ -477,7 +482,7 @@ class AgroETL:
                     tbody td {{ padding: 8px 10px; text-align: center; color: #444; border: none; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: var(--dark-color); }}
                     /* Controle super restrito da largura da coluna de IA */
-                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.1; font-size: 10px; color: #ffffff; white-space: normal; }}
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.1; font-size: 10px; color: #ffffff; background-color: #2c3e50; white-space: normal; }}
                     tbody tr:hover {{ background-color: #fafafa; }}
                 </style>
             </head>
