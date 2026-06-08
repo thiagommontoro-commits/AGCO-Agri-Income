@@ -129,7 +129,6 @@ class AgroETL:
         for arquivo in arquivos:
             nome_arquivo = os.path.basename(arquivo)
             
-            # Extrai ano e mês do nome do arquivo para formatar a versão (ex: 2026 - 01)
             match_data = re.search(r'(\d{4})(\d{2})', nome_arquivo)
             if match_data:
                 versao_formatada = f"{match_data.group(1)} - {match_data.group(2)}"
@@ -138,7 +137,6 @@ class AgroETL:
                 
             logging.info(f"Lendo e empilhando planilha: {nome_arquivo} (Versão: {versao_formatada})...")
             try:
-                # Lê todas as abas ignorando o cabeçalho automático (header=None) para não perder o topo
                 dicionario_abas = pd.read_excel(arquivo, sheet_name=None, header=None)
                 df_maior = pd.DataFrame()
                 
@@ -147,7 +145,6 @@ class AgroETL:
                         df_maior = df_aba
                         
                 if not df_maior.empty:
-                    # Identifica a linha do cabeçalho verdadeiro (ex: que começa com os anos 1989, 1990...)
                     idx_cabecalho = 0
                     for idx, row in df_maior.iterrows():
                         valores_linha = row.astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
@@ -155,16 +152,12 @@ class AgroETL:
                             idx_cabecalho = idx
                             break
                             
-                    # Define o cabeçalho real e descarta o texto solto das primeiras linhas
                     df_maior.columns = df_maior.iloc[idx_cabecalho]
                     df_maior.columns.name = None
                     df_maior = df_maior.iloc[idx_cabecalho + 1:].reset_index(drop=True)
 
-                    # Remove linhas 100% vazias para organizar a base
                     df_maior = df_maior.dropna(how='all', axis=0).dropna(how='all', axis=1).reset_index(drop=True)
 
-                    # A Tabela 2 (Preços Correntes) empilhada repete o 1º item da Tabela 1 (ex: "LAVOURAS").
-                    # Cortamos o arquivo exatamente onde essa repetição acontece.
                     if not df_maior.empty:
                         col_zero = df_maior.columns[0]
                         valores_validos = df_maior[col_zero].dropna()
@@ -179,21 +172,18 @@ class AgroETL:
                     if not df_limpo.empty and len(df_limpo.columns) > 0:
                         primeira_col = df_limpo.columns[0]
                         
-                        # Corta a tabela descartando o rodapé ao encontrar palavras-chave
                         termos_rodape = 'fonte|nota|elaboração|elaboracao|atualizado'
                         mascara_rodape = df_limpo[primeira_col].astype(str).str.lower().str.contains(termos_rodape, na=False)
                         if mascara_rodape.any():
                             idx_rodape = mascara_rodape.idxmax()
                             df_limpo = df_limpo.loc[:idx_rodape].iloc[:-1]
 
-                        # Remove duplicatas normalizando o texto (sem acentos ou espaços soltos)
                         df_limpo['chave_temp'] = df_limpo[primeira_col].astype(str).str.strip().str.lower()
                         df_limpo['chave_temp'] = df_limpo['chave_temp'].apply(
                             lambda x: ''.join(c for c in unicodedata.normalize('NFD', x) if unicodedata.category(c) != 'Mn')
                         )
                         df_limpo = df_limpo.drop_duplicates(subset=['chave_temp'], keep='first').drop(columns=['chave_temp'])
                         
-                        # Adiciona uma coluna na primeira posição para identificar a versão/origem do dado
                         df_limpo.insert(0, 'versao_arquivo', versao_formatada)
                         
                     lista_dfs.append(df_limpo)
@@ -219,7 +209,6 @@ class AgroETL:
         else:
             df_consolidado = df_valor if not df_valor.empty else df_volume
 
-        # Preenche valores vazios de forma segura (evita erro com texto no Pandas)
         for col in df_consolidado.columns:
             try:
                 df_consolidado[col] = df_consolidado[col].fillna(0)
@@ -246,10 +235,9 @@ class AgroETL:
             logging.error("A coluna 'versao_arquivo' não existe. Rode a consolidação novamente.")
             return False
 
-        # Padroniza as colunas de anos para string, remove '.0' e asteriscos (*) que o governo usa para projeções
         novas_colunas = []
         for i, c in enumerate(df.columns):
-            if i > 0: # Ignora a coluna 'versao_arquivo'
+            if i > 0: 
                 novas_colunas.append(re.sub(r'\.0$', '', str(c)).replace('*', '').strip())
             else:
                 novas_colunas.append(c)
@@ -260,22 +248,17 @@ class AgroETL:
             return False
             
         versao_atual = versoes[-1]
-        
         logging.info(f"Montando painel com o histórico de versões até: {versao_atual}...")
 
         df_atual = df[df['versao_arquivo'] == versao_atual].copy()
-
-        # A primeira coluna é 'versao_arquivo', a segunda deve ser o Produto/Cultura
         col_produto_str = df_atual.columns[1]
 
-        # Inicia a tabela de exibição com as colunas de Produtos, 2024 e 2025
         cols_base = [col_produto_str]
         for ano in ['2024', '2025']:
             if ano in df_atual.columns: cols_base.append(ano)
                 
         df_exibicao = df_atual[cols_base].copy()
 
-        # Loop dinâmico: Extrai a projeção de 2026 de TODAS as versões (Jan, Fev, Mar...) e as coloca lado a lado
         colunas_2026 = []
         for v in versoes:
             df_v = df[df['versao_arquivo'] == v].copy()
@@ -287,7 +270,6 @@ class AgroETL:
 
         df_exibicao = df_exibicao.rename(columns={col_produto_str: 'Produto / Cultura'})
 
-        # Calcula a variação de 2026 (Sempre comparando a última com a penúltima disponível)
         coluna_var = 'Variação vs Mês Anterior (%)'
         if len(colunas_2026) >= 2:
             col_atual = colunas_2026[-1]
@@ -299,7 +281,9 @@ class AgroETL:
         else:
             df_exibicao[coluna_var] = pd.NA
 
-        # Inserção da coluna de Insights de Maquinário (Motor Heurístico / IA)
+        # -------------------------------------------------------------------
+        # AJUSTE: Textos concisos para o Impacto em Maquinário (IA)
+        # -------------------------------------------------------------------
         def gerar_insight(row):
             cultura = str(row['Produto / Cultura']).lower()
             var = row[coluna_var]
@@ -308,43 +292,43 @@ class AgroETL:
             
             maquinas = ""
             if any(c in cultura for c in ['soja', 'milho', 'trigo', 'arroz', 'algodão', 'algodao', 'sorgo']):
-                maquinas = "Tratores de Alta Potência (240-339HP e >340HP), Colheitadeiras, Pulverizadores e Plantadeiras"
+                maquinas = "Alta Potência, Colheitadeiras e Plantadeiras"
             elif any(c in cultura for c in ['café', 'cafe']):
-                maquinas = "Tratores Estreitos/Especiais (50-79HP e 80-119HP) e Colheitadeiras de Café"
+                maquinas = "Tratores Especiais e Colheitadeiras"
             elif 'cana' in cultura:
-                maquinas = "Tratores Pesados (170-239HP e 240-339HP) para transbordo e Colheitadeiras de Cana"
+                maquinas = "Tratores Pesados e Colheitadeiras de Cana"
             elif any(c in cultura for c in ['laranja', 'uva', 'maçã', 'maca', 'banana', 'cacau']):
-                maquinas = "Tratores Leves/Fruteiros (0-49HP e 50-79HP)"
+                maquinas = "Tratores Leves e Fruteiros"
             elif any(c in cultura for c in ['feijão', 'feijao', 'batata', 'cebola', 'tomate', 'mandioca', 'amendoim']):
-                maquinas = "Tratores Médios (80-119HP e 120-169HP) e Implementos Menores"
+                maquinas = "Tratores Médios e Implementos"
             else:
-                maquinas = "Tratores Multiuso (80-119HP e 120-169HP)"
+                maquinas = "Tratores Multiuso"
                 
             if var > 2:
-                return f"📈 OPORTUNIDADE: Aumento forte no VBP sinaliza capitalização. Ótimo cenário para venda de {maquinas}."
+                return f"📈 OPORTUNIDADE: Foco na venda de {maquinas}."
             elif var > 0:
-                return f"↗️ AQUECIMENTO: Alta moderada estimula a renovação natural da frota de {maquinas}."
+                return f"↗️ AQUECIMENTO: Renovação de {maquinas}."
             elif var < -2:
-                return f"🔴 ALERTA: Queda severa retrai financiamentos. Venda de {maquinas} deve cair; focar em Pós-Venda."
+                return f"🔴 ALERTA: Queda em vendas. Foco em Pós-Venda ({maquinas})."
             elif var < 0:
-                return f"↘️ CAUTELA: Leve retração faz o produtor segurar caixa. Giro de {maquinas} pode ficar mais lento."
+                return f"↘️ CAUTELA: Retenção de caixa; giro lento ({maquinas})."
             else:
-                return f"➡️ ESTABILIDADE: Fluxo normal de reposição para {maquinas}."
+                return f"➡️ ESTÁVEL: Fluxo de reposição normal ({maquinas})."
 
         df_exibicao['Impacto em Maquinário (IA)'] = df_exibicao.apply(gerar_insight, axis=1)
 
-        # Limpeza fina: Garante que os números são numéricos e exclui culturas 100% zeradas para não poluir o painel
         cols_numericas = [c for c in df_exibicao.columns if c not in ['Produto / Cultura', coluna_var, 'Impacto em Maquinário (IA)']]
         for col in cols_numericas:
             df_exibicao[col] = pd.to_numeric(df_exibicao[col], errors='coerce').fillna(0)
         df_exibicao = df_exibicao[(df_exibicao[cols_numericas] != 0).any(axis=1)]
 
+        # Ajuste de Cores Condicionais (AGCO Red & Green)
         def formatar_cores(val):
             if pd.isna(val) or isinstance(val, str): return ''
             try:
                 v = float(val)
-                if v > 0: return 'color: #107C41; font-weight: 700;' # Verde Executivo
-                if v < 0: return 'color: #BA0C2F; font-weight: 700;' # Vermelho AGCO
+                if v > 0: return 'color: #107C41; font-weight: 700;' 
+                if v < 0: return 'color: #BA0C2F; font-weight: 700;' 
             except: pass
             return ''
             
@@ -355,7 +339,6 @@ class AgroETL:
                 return f"{float(x):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             except: return x
 
-        # Cálculos Automáticos para os Blocos de Destaque
         try:
             total_culturas = len(df_exibicao)
             valid_vars = df_exibicao.dropna(subset=[coluna_var])
@@ -383,21 +366,23 @@ class AgroETL:
         
         caminho_html = os.path.join(self.dir_relatorios, 'index.html')
         
+        # -------------------------------------------------------------------
+        # AJUSTE: Layout Polido (Cores AGCO, KPIs reduzidos, Tradução)
+        # -------------------------------------------------------------------
         with open(caminho_html, 'w', encoding='utf-8') as f:
             f.write(f'''
             <!DOCTYPE html>
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
-                <title>Painel Executivo VBP</title>
-                <!-- Script do SheetJS para Exportação em Excel -->
+                <title>Painel de Renda Agrícola</title>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
                 <style>
                     :root {{
-                        --primary-color: #005a9c;
-                        --dark-color: #000000; /* Preto absoluto para o cabeçalho */
-                        --danger-color: #d9534f;
-                        --bg-light: #eef1f5;
+                        --primary-color: #BA0C2F; /* Vermelho AGCO */
+                        --dark-color: #231F20;    /* Preto Corporativo AGCO */
+                        --bg-light: #F4F5F7;
+                        --border-color: #E2E6E9;
                     }}
                     body {{
                         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -405,68 +390,80 @@ class AgroETL:
                         margin: 0;
                         padding: 30px;
                         color: #333;
-                        top: 0 !important; /* Corrige margem do Google Translate */
+                        top: 0 !important;
                     }}
-                    .skiptranslate {{ display: none !important; }} /* Esconde a barra do Google */
+                    .skiptranslate {{ display: none !important; }} 
                     
                     .dashboard-container {{
-                        background-color: #f8fbfb;
-                        border-radius: 8px;
-                        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-                        padding: 20px 30px;
-                        border-top: 6px solid var(--primary-color);
-                        max-width: 1500px;
+                        background-color: #ffffff;
+                        border-radius: 6px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+                        padding: 25px 30px;
+                        border-top: 5px solid var(--primary-color);
+                        max-width: 1400px;
                         margin: 0 auto;
                     }}
                     .header {{
                         display: flex;
                         justify-content: space-between;
-                        align-items: center;
-                        border-bottom: 2px solid #f0f0f0;
-                        padding-bottom: 10px;
-                        margin-bottom: 20px;
+                        align-items: flex-start;
+                        border-bottom: 1px solid var(--border-color);
+                        padding-bottom: 15px;
+                        margin-bottom: 25px;
                     }}
-                    .title-area h2 {{ color: var(--dark-color); margin: 0 0 5px 0; font-size: 1.8em; font-weight: 700; }}
-                    .title-area p {{ color: #666; margin: 0; font-size: 0.95em; }}
+                    .title-area h2 {{ color: var(--dark-color); margin: 0 0 5px 0; font-size: 1.6em; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }}
+                    .title-area p {{ color: #666; margin: 0; font-size: 0.9em; }}
                     
-                    /* Blocos de Destaques (KPIs) */
-                    .kpi-grid {{ display: flex; gap: 15px; margin-bottom: 20px; }}
+                    /* KPIs - Menores e Polidos */
+                    .kpi-grid {{ display: flex; gap: 15px; margin-bottom: 25px; }}
                     .kpi-card {{ 
                         flex: 1; 
-                        background: #f0f4f8; 
+                        background: #fff; 
                         padding: 12px 15px; 
-                        border-radius: 6px; 
-                        box-shadow: 0 3px 10px rgba(0,0,0,0.06); 
-                        border: 1px solid #eaeaea;
-                        border-left: 5px solid var(--dark-color);
+                        border-radius: 4px; 
+                        box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+                        border: 1px solid var(--border-color);
+                        border-left: 4px solid var(--dark-color);
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
                     }}
-                    .kpi-card.brand {{ border-left-color: var(--dark-color); }}
+                    .kpi-card.brand {{ border-left-color: var(--primary-color); }}
                     .kpi-card.positive {{ border-left-color: #107C41; }}
-                    .kpi-card.negative {{ border-left-color: var(--danger-color); }}
+                    .kpi-card.negative {{ border-left-color: var(--primary-color); }}
                     
-                    .kpi-title {{ font-size: 11px; color: #7f8c8d; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 5px; }}
-                    .kpi-value {{ font-size: 18px; font-weight: 800; color: var(--dark-color); margin: 0; }}
+                    .kpi-title {{ font-size: 10px; color: #777; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; }}
+                    .kpi-value {{ font-size: 17px; font-weight: 800; color: var(--dark-color); margin: 0; }}
                     
-                    /* Tabela Profissional */
-                    table {{ border-collapse: collapse; width: 100%; font-size: 14px; margin-top: 10px; }}
-                    thead th {{ background-color: var(--dark-color); color: #ffffff; text-align: right; padding: 15px 12px; border: none; text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.5px; }}
+                    /* Botões e Ações */
+                    .action-buttons {{ display: flex; gap: 8px; margin-top: 12px; justify-content: flex-end; }}
+                    .btn {{ 
+                        background: #fff; border: 1px solid #ccc; padding: 5px 10px; border-radius: 4px; 
+                        cursor: pointer; font-size: 11px; font-weight: 600; color: var(--dark-color);
+                        transition: all 0.2s;
+                    }}
+                    .btn:hover {{ background: var(--bg-light); border-color: var(--dark-color); }}
+                    .btn-excel {{ background: #107C41; color: white; border-color: #107C41; }}
+                    .btn-excel:hover {{ background: #0c6132; border-color: #0c6132; }}
+
+                    /* Tabela */
+                    table {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
+                    thead th {{ background-color: var(--dark-color); color: #fff; text-align: right; padding: 12px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border: none; }}
                     thead th:first-child {{ text-align: left; }}
-                    tbody tr {{ border-bottom: 1px solid #eaeaea; }} /* Linha sutil apenas na horizontal */
-                    tbody td {{ padding: 14px 12px; border: none; text-align: right; color: #444; }}
-                    tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: #111; }}
-                    /* Limita a largura da coluna de IA e ajusta a fonte para um equilíbrio elegante */
-                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 180px; line-height: 1.2; font-size: 0.9em; color: #666; }}
-                    tbody tr:hover {{ background-color: #f8f9fa; }}
+                    tbody tr {{ border-bottom: 1px solid var(--border-color); }}
+                    tbody td {{ padding: 10px; text-align: right; color: #444; border: none; }}
+                    tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: var(--dark-color); }}
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 250px; line-height: 1.3; font-size: 12px; color: #555; }}
+                    tbody tr:hover {{ background-color: #fafafa; }}
                 </style>
             </head>
             <body>
-                <!-- Elemento oculto do Google Translate -->
                 <div id="google_translate_element" style="display:none;"></div>
                 
                 <div class="dashboard-container">
                     <div class="header">
                         <div class="title-area">
-                            <h2>Painel Executivo de VBP</h2>
+                            <h2>Painel de renda agrícola</h2>
                             <p>Acompanhamento de Valor Bruto da Produção com Inteligência de Mercado</p>
                             <p style="margin-top: 5px; font-size: 0.85em; color: var(--primary-color); font-weight: 600;">Desenvolvido pela área da AGCO Reporting & Analytics</p>
                         </div>
@@ -500,15 +497,12 @@ class AgroETL:
                 </div>
 
                 <script type="text/javascript">
-                    // Inicializa o Google Translate oculto
                     function googleTranslateElementInit() {{
                         new google.translate.TranslateElement({{pageLanguage: 'pt', autoDisplay: false}}, 'google_translate_element');
                     }}
                     
-                    // Dispara a tradução
                     function doGTranslate(lang) {{
                         if (lang === 'pt') {{
-                            // Para voltar ao original, limpa o cookie do Google Translate e recarrega
                             document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
                             location.reload();
                             return;
@@ -520,7 +514,6 @@ class AgroETL:
                         }}
                     }}
                     
-                    // Exporta a tabela formatada para Excel
                     function exportExcel() {{
                         var table = document.querySelector("table");
                         var wb = XLSX.utils.table_to_book(table, {{sheet: "Painel VBP"}});
