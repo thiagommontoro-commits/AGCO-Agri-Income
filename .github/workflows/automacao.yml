@@ -34,7 +34,7 @@ jobs:
         run: |
           git config --global user.name 'Robo AGCO GitHub Action'
           git config --global user.email 'action@github.com'
-          mkdir -p outputs bases_historicas
-          git add outputs/ bases_historicas/
+          mkdir -p bases_historicas
+          git add index.html bases_historicas/ || true
           git commit -m "Atualização automática do Dashboard VBP" || true
           git push || true
