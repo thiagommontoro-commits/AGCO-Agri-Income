@@ -232,7 +232,13 @@ class AgroETL:
         novas_colunas = []
         for i, c in enumerate(df.columns):
             if i > 0: 
-                novas_colunas.append(re.sub(r'\.0$', '', str(c)).replace('*', '').strip())
+                base_name = re.sub(r'\.0$', '', str(c)).replace('*', '').strip()
+                col_name = base_name
+                contador = 1
+                while col_name in novas_colunas:
+                    col_name = f"{base_name}_{contador}"
+                    contador += 1
+                novas_colunas.append(col_name)
             else:
                 novas_colunas.append(c)
         df.columns = novas_colunas
