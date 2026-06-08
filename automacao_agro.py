@@ -477,7 +477,7 @@ class AgroETL:
                     tbody td {{ padding: 8px 10px; text-align: center; color: #444; border: none; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: var(--dark-color); }}
                     /* Controle super restrito da largura da coluna de IA */
-                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.1; font-size: 10px; color: #555; white-space: normal; }}
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 160px; line-height: 1.1; font-size: 10px; color: #ffffff; white-space: normal; }}
                     tbody tr:hover {{ background-color: #fafafa; }}
                 </style>
             </head>
