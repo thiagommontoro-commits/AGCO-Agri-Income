@@ -343,8 +343,8 @@ class AgroETL:
             if pd.isna(val) or isinstance(val, str): return ''
             try:
                 v = float(val)
-                if v > 0: return 'color: #107C41; font-weight: 700;' /* Verde Executivo */
-                if v < 0: return 'color: #BA0C2F; font-weight: 700;' /* Vermelho AGCO */
+                if v > 0: return 'color: #107C41; font-weight: 700;' # Verde Executivo
+                if v < 0: return 'color: #BA0C2F; font-weight: 700;' # Vermelho AGCO
             except: pass
             return ''
             
