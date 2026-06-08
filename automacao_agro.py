@@ -449,8 +449,8 @@ class AgroETL:
                     tbody tr {{ border-bottom: 1px solid #eaeaea; }} /* Linha sutil apenas na horizontal */
                     tbody td {{ padding: 14px 12px; border: none; text-align: right; color: #444; }}
                     tbody td:first-child, tbody th:first-child {{ text-align: left; font-weight: 600; color: #111; }}
-                    /* Mantém o texto da IA em uma única linha para reduzir a altura */
-                    thead th:last-child, tbody td:last-child {{ text-align: left; white-space: nowrap; }}
+                    /* Limita a largura da coluna de IA e ajusta a fonte para um equilíbrio elegante */
+                    thead th:last-child, tbody td:last-child {{ text-align: left; max-width: 250px; line-height: 1.3; font-size: 0.95em; color: #666; }}
                     tbody tr:hover {{ background-color: #f8f9fa; }}
                 </style>
             </head>
