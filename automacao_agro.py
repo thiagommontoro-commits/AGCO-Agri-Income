@@ -2,6 +2,7 @@ import os
 import glob
 import requests
 import logging
+import json
 import unicodedata
 import re
 from datetime import datetime
@@ -691,17 +692,44 @@ class CepeaETL:
                 res = requests.get(url, headers=headers, timeout=15)
                 if res.status_code == 200:
                     data = res.json()['chart']['result'][0]
-                    timestamps = data['timestamp']
                     closes = data['indicators']['quote'][0]['close']
+                    valid_closes = [c for c in closes if c is not None]
                     
-                    labels = [datetime.fromtimestamp(ts).strftime('%m/%Y') for ts in timestamps]
-                    valid_closes = [round(c, 2) if c is not None else None for c in closes]
-                    self.historico[name] = {'labels': labels, 'data': valid_closes}
+                    if valid_closes:
+                        preco_2023 = valid_closes[0]
+                        preco_atual = valid_closes[-1]
+                        variacao = ((preco_atual - preco_2023) / preco_2023) * 100
+                        self.historico[name] = {
+                            'preco_2023': f"{preco_2023:.2f}",
+                            'preco_atual': f"{preco_atual:.2f}",
+                            'variacao': variacao
+                        }
+                    else:
+                        self.historico[name] = None
                 else:
-                    self.historico[name] = {'labels': [], 'data': []}
+                    self.historico[name] = None
             except Exception as e:
                 logging.error(f"Erro ao buscar histórico {name}: {e}")
-                self.historico[name] = {'labels': [], 'data': []}
+                self.historico[name] = None
+
+    def formatar_tendencia(self, chave, unidade="US$"):
+        hist = self.historico.get(chave)
+        if not hist:
+            return f'''<div class="price-section">
+                        <div class="section-title">Horizonte Global (Desde Jan/2023)</div>
+                        <div class="price-row"><span>Dados indisponíveis</span> <strong>--</strong></div>
+                       </div>'''
+        
+        var = hist['variacao']
+        cor = "var(--positive)" if var > 0 else "var(--negative)"
+        sinal = "+" if var > 0 else ""
+        
+        return f'''<div class="price-section">
+                    <div class="section-title">Horizonte Global (Desde Jan/2023)</div>
+                    <div class="price-row"><span>Preço Jan/2023</span> <strong>{unidade} {hist['preco_2023']}</strong></div>
+                    <div class="price-row"><span>Preço Atual</span> <strong>{unidade} {hist['preco_atual']}</strong></div>
+                    <div class="price-row"><span>Evolução no Período</span> <strong style="color: {cor};">{sinal}{var:.1f}%</strong></div>
+                   </div>'''
 
     def gerar_relatorio_precos(self):
         logging.info("--- GERANDO PÁGINA DE PREÇOS (CEPEA) ---")
@@ -717,7 +745,6 @@ class CepeaETL:
             <head>
                 <meta charset="utf-8">
                 <title>Painel Preços Agrícolas - CEPEA</title>
-                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
                 <style>
                     :root {{ --agco-red: #BA0C2F; --text-main: #2c3e50; --bg-page: #f4f7f6; --bg-card: #ffffff; --header-bg: #1e293b; }}
                     body {{ background-color: var(--bg-page); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: var(--text-main); }}
@@ -742,8 +769,6 @@ class CepeaETL:
                     .price-row:last-child {{ margin-bottom: 0; border-bottom: none; padding-bottom: 0; }}
                     .price-row span {{ color: #475569; }}
                     .price-row strong {{ color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }}
-                    
-                    .chart-container {{ padding: 15px 20px; background: #fff; border-top: 1px solid var(--border-light); }}
                 </style>
             </head>
             <body>
@@ -776,10 +801,7 @@ class CepeaETL:
                                     <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('soja_cbot')} / bu</strong></div>
                                     <div class="price-row"><span>Prêmio de Exportação</span> <strong>{self.get_preco('soja_premio')} / c</strong></div>
                                 </div>
-                                <div class="chart-container">
-                                    <div class="section-title" style="margin-bottom:5px;">Horizonte Global (2023 - Atual)</div>
-                                    <canvas id="chart-soja" height="60"></canvas>
-                                </div>
+                                {self.formatar_tendencia('soja', 'US$')}
                             </div>
 
                             <!-- Milho -->
@@ -795,10 +817,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('milho_cbot')} / bu</strong></div>
                                 </div>
-                                <div class="chart-container">
-                                    <div class="section-title" style="margin-bottom:5px;">Horizonte Global (2023 - Atual)</div>
-                                    <canvas id="chart-milho" height="60"></canvas>
-                                </div>
+                                {self.formatar_tendencia('milho', 'US$')}
                             </div>
 
                             <!-- Café -->
@@ -814,10 +833,7 @@ class CepeaETL:
                                     <div class="price-row"><span>ICE (Arábica - NY)</span> <strong>{self.get_preco('cafe_ny')} / lb</strong></div>
                                     <div class="price-row"><span>ICE (Robusta - Londres)</span> <strong>{self.get_preco('cafe_lon')} / ton</strong></div>
                                 </div>
-                                <div class="chart-container">
-                                    <div class="section-title" style="margin-bottom:5px;">Horizonte Global (2023 - Atual)</div>
-                                    <canvas id="chart-cafe" height="60"></canvas>
-                                </div>
+                                {self.formatar_tendencia('cafe', 'US$')}
                             </div>
 
                             <!-- Algodão -->
@@ -832,10 +848,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>ICE (Nova York)</span> <strong>{self.get_preco('algodao_ny')} / lb</strong></div>
                                 </div>
-                                <div class="chart-container">
-                                    <div class="section-title" style="margin-bottom:5px;">Horizonte Global (2023 - Atual)</div>
-                                    <canvas id="chart-algodao" height="60"></canvas>
-                                </div>
+                                {self.formatar_tendencia('algodao', 'US$')}
                             </div>
 
                             <!-- Boi Gordo -->
@@ -851,10 +864,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>{self.get_preco('boi_cme', 'US$ --,--')} / lb</strong></div>
                                 </div>
-                                <div class="chart-container">
-                                    <div class="section-title" style="margin-bottom:5px;">Horizonte Global (2023 - Atual)</div>
-                                    <canvas id="chart-boi" height="60"></canvas>
-                                </div>
+                                {self.formatar_tendencia('boi', 'US$')}
                             </div>
 
                             <!-- Trigo & Aveia -->
@@ -869,10 +879,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>CBOT (Trigo - EUA)</span> <strong>{self.get_preco('trigo_cbot')} / bu</strong></div>
                                 </div>
-                                <div class="chart-container">
-                                    <div class="section-title" style="margin-bottom:5px;">Horizonte Global (2023 - Atual)</div>
-                                    <canvas id="chart-trigo" height="60"></canvas>
-                                </div>
+                                {self.formatar_tendencia('trigo', 'US$')}
                             </div>
 
                             <!-- Frutas -->
@@ -889,46 +896,6 @@ class CepeaETL:
                         </div>
                     </div>
                 </div>
-                
-                <script>
-                    const histData = {json.dumps(self.historico)};
-                    
-                    function renderChart(canvasId, label, color, dataKey) {{
-                        const ctx = document.getElementById(canvasId);
-                        if(!ctx || !histData[dataKey] || !histData[dataKey].labels || histData[dataKey].labels.length === 0) return;
-                        
-                        new Chart(ctx, {{
-                            type: 'line',
-                            data: {{
-                                labels: histData[dataKey].labels,
-                                datasets: [{{
-                                    label: label,
-                                    data: histData[dataKey].data,
-                                    borderColor: color,
-                                    backgroundColor: color + '15',
-                                    borderWidth: 2,
-                                    fill: true,
-                                    tension: 0.4,
-                                    pointRadius: 0,
-                                    pointHoverRadius: 4
-                                }}]
-                            }},
-                            options: {{
-                                responsive: true,
-                                plugins: {{ legend: {{ display: false }}, tooltip: {{ mode: 'index', intersect: false }} }},
-                                scales: {{ x: {{ display: false }}, y: {{ display: true, ticks: {{ font: {{ size: 9 }}, maxTicksLimit: 5 }} }} }},
-                                interaction: {{ mode: 'nearest', axis: 'x', intersect: false }}
-                            }}
-                        }});
-                    }}
-
-                    renderChart('chart-soja', 'Preço (US$)', '#107C41', 'soja');
-                    renderChart('chart-milho', 'Preço (US$)', '#f39c12', 'milho');
-                    renderChart('chart-cafe', 'Preço (US$)', '#8e44ad', 'cafe');
-                    renderChart('chart-algodao', 'Preço (US$)', '#3498db', 'algodao');
-                    renderChart('chart-boi', 'Preço (US$)', '#BA0C2F', 'boi');
-                    renderChart('chart-trigo', 'Preço (US$)', '#e67e22', 'trigo');
-                </script>
             </body>
             </html>
             ''')
