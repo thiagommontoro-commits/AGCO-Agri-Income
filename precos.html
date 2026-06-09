@@ -32,7 +32,7 @@
                     /* Mini-tabela de Evolução Histórica */
                     .hist-table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 5px; }
                     .hist-table th { background-color: #f1f5f9; color: var(--text-muted); padding: 6px 2px; text-align: center; font-weight: 700; font-size: 0.9em; border: 1px solid var(--border-light); }
-                    .hist-table td { background-color: #fff; border: 1px solid var(--border-light); padding: 8px 2px; text-align: center; font-weight: 700; color: var(--text-main); }
+                    .hist-table td { background-color: #fff; border: 1px solid var(--border-light); padding: 8px 1px; text-align: center; font-weight: 700; color: var(--text-main); white-space: nowrap; }
                 </style>
             </head>
             <body>
@@ -66,7 +66,7 @@
                                     <div class="price-row"><span>Prêmio de Exportação</span> <strong>R$ --,-- / c</strong></div>
                                 </div>
                                 <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica (US$)</div>
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / bu)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -80,12 +80,12 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>14.01</td>
-                                <td>11.03</td>
-                                <td>10.38</td>
-                                <td>11.87</td>
-                                <td>11.14</td>
-                                <td><span style="color: var(--negative);">-6.2%</span></td>
+                                <td>US$ 14.01</td>
+                                <td>US$ 11.03</td>
+                                <td>US$ 10.38</td>
+                                <td>US$ 11.87</td>
+                                <td>US$ 11.14</td>
+                                <td><span style="color: var(--negative);">-6.1%</span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -106,7 +106,7 @@
                                     <div class="price-row"><span>CBOT (Chicago)</span> <strong>R$ --,-- / bu</strong></div>
                                 </div>
                                 <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica (US$)</div>
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / bu)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -120,11 +120,11 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>5.45</td>
-                                <td>4.18</td>
-                                <td>4.38</td>
-                                <td>4.47</td>
-                                <td>4.20</td>
+                                <td>US$ 5.45</td>
+                                <td>US$ 4.18</td>
+                                <td>US$ 4.38</td>
+                                <td>US$ 4.47</td>
+                                <td>US$ 4.20</td>
                                 <td><span style="color: var(--negative);">-6.0%</span></td>
                             </tr>
                         </tbody>
@@ -146,7 +146,7 @@
                                     <div class="price-row"><span>ICE (Robusta - Londres)</span> <strong>R$ --,-- / ton</strong></div>
                                 </div>
                                 <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica (US$)</div>
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / lb)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -160,11 +160,11 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>1.74</td>
-                                <td>2.30</td>
-                                <td>3.74</td>
-                                <td>2.66</td>
-                                <td>2.45</td>
+                                <td>US$ 1.74</td>
+                                <td>US$ 2.30</td>
+                                <td>US$ 3.74</td>
+                                <td>US$ 2.66</td>
+                                <td>US$ 2.45</td>
                                 <td><span style="color: var(--negative);">-7.7%</span></td>
                             </tr>
                         </tbody>
@@ -185,7 +185,7 @@
                                     <div class="price-row"><span>ICE (Nova York)</span> <strong>R$ --,-- / lb</strong></div>
                                 </div>
                                 <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica (US$)</div>
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / lb)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -199,11 +199,11 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>0.83</td>
-                                <td>0.77</td>
-                                <td>0.65</td>
-                                <td>0.76</td>
-                                <td>0.76</td>
+                                <td>US$ 0.83</td>
+                                <td>US$ 0.77</td>
+                                <td>US$ 0.65</td>
+                                <td>US$ 0.76</td>
+                                <td>US$ 0.76</td>
                                 <td><span style="color: var(--positive);">+0.1%</span></td>
                             </tr>
                         </tbody>
@@ -225,7 +225,7 @@
                                     <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>US$ --,-- / lb</strong></div>
                                 </div>
                                 <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica (US$)</div>
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / lb)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -239,11 +239,11 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>1.75</td>
-                                <td>1.86</td>
-                                <td>2.21</td>
-                                <td>2.48</td>
-                                <td>2.40</td>
+                                <td>US$ 1.75</td>
+                                <td>US$ 1.86</td>
+                                <td>US$ 2.21</td>
+                                <td>US$ 2.48</td>
+                                <td>US$ 2.40</td>
                                 <td><span style="color: var(--negative);">-3.4%</span></td>
                             </tr>
                         </tbody>
@@ -264,7 +264,7 @@
                                     <div class="price-row"><span>CBOT (Trigo - EUA)</span> <strong>R$ --,-- / bu</strong></div>
                                 </div>
                                 <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica (US$)</div>
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / bu)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -278,12 +278,12 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>6.21</td>
-                                <td>5.71</td>
-                                <td>5.27</td>
-                                <td>6.11</td>
-                                <td>5.86</td>
-                                <td><span style="color: var(--negative);">-4.1%</span></td>
+                                <td>US$ 6.21</td>
+                                <td>US$ 5.71</td>
+                                <td>US$ 5.27</td>
+                                <td>US$ 6.11</td>
+                                <td>US$ 5.85</td>
+                                <td><span style="color: var(--negative);">-4.2%</span></td>
                             </tr>
                         </tbody>
                     </table>
