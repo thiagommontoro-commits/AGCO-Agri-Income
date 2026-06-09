@@ -25,7 +25,7 @@ jobs:
       - name: Instalar as bibliotecas
         run: |
           python -m pip install --upgrade pip
-          pip install pandas requests beautifulsoup4 openpyxl jinja2 yfinance
+          pip install pandas requests beautifulsoup4 openpyxl jinja2 yfinance cloudscraper
 
       - name: Executar o Robô
         run: python automacao_agro.py
