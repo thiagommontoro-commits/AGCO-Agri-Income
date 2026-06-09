@@ -600,7 +600,8 @@ class CepeaETL:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Referer': 'https://www.google.com/'
         }
         
         # 1. Indicadores Oficiais CEPEA (Mercado Interno Base)
@@ -632,46 +633,48 @@ class CepeaETL:
             r = requests.get("https://www.noticiasagricolas.com.br/cotacoes/", headers=headers, timeout=15)
             soup = BeautifulSoup(r.text, 'html.parser')
             
-            def buscar_na_tabela(nome_tabela, nome_linha, simbolo="R$"):
-                for table in soup.find_all('table', class_='cotacao'):
-                    thead = table.find('thead')
-                    if thead and nome_tabela.lower() in thead.text.lower():
+            def buscar_por_praca(culturas, praca, simbolo="R$"):
+                if isinstance(culturas, str): culturas = [culturas]
+                for table in soup.find_all('table'):
+                    parent = table.find_previous(['h1', 'h2', 'h3', 'h4', 'div', 'th'])
+                    parent_text = parent.text.lower() if parent else ""
+                    if any(c.lower() in parent_text for c in culturas):
                         for tr in table.find_all('tr'):
                             tds = tr.find_all('td')
-                            if len(tds) >= 2 and nome_linha.lower() in tds[0].text.lower():
+                            if len(tds) >= 2 and praca.lower() in tds[0].text.lower():
                                 return f"{simbolo} {tds[1].text.strip()}"
                 return None
 
-            def buscar_primeira_linha(nome_tabela, simbolo="R$"):
-                for table in soup.find_all('table', class_='cotacao'):
-                    thead = table.find('thead')
-                    if thead and nome_tabela.lower() in thead.text.lower():
-                        tbody = table.find('tbody')
-                        if tbody:
-                            tr = tbody.find('tr')
-                            if tr:
-                                tds = tr.find_all('td')
-                                if len(tds) >= 2:
-                                    return f"{simbolo} {tds[1].text.strip()}"
+            def buscar_bolsa(nomes_bolsa, simbolo="US$"):
+                if isinstance(nomes_bolsa, str): nomes_bolsa = [nomes_bolsa]
+                for table in soup.find_all('table'):
+                    parent = table.find_previous(['h1', 'h2', 'h3', 'h4', 'div', 'th'])
+                    parent_text = parent.text.lower() if parent else ""
+                    if any(nome.lower() in parent_text for nome in nomes_bolsa):
+                        tbody = table.find('tbody') or table
+                        for tr in tbody.find_all('tr'):
+                            tds = tr.find_all('td')
+                            if len(tds) >= 2:
+                                return f"{simbolo} {tds[1].text.strip()}"
                 return None
 
             # Bolsas Internacionais (Chicago / NY / Londres)
-            if v := buscar_primeira_linha('soja - cbot', 'US$'): self.precos['soja_cbot'] = v
-            if v := buscar_primeira_linha('soja - prêmios', 'US$'): self.precos['soja_premio'] = v
-            if v := buscar_primeira_linha('milho - cbot', 'US$'): self.precos['milho_cbot'] = v
-            if v := buscar_primeira_linha('café - ny', 'US$'): self.precos['cafe_ny'] = v
-            if v := buscar_primeira_linha('café - londres', 'US$'): self.precos['cafe_lon'] = v
-            if v := buscar_primeira_linha('algodão - ny', 'US$'): self.precos['algodao_ny'] = v
-            if v := buscar_primeira_linha('trigo - cbot', 'US$'): self.precos['trigo_cbot'] = v
+            if v := buscar_bolsa(['soja - cbot', 'soja - chicago'], 'US$'): self.precos['soja_cbot'] = v
+            if v := buscar_bolsa(['soja - prêmios', 'prêmios'], 'US$'): self.precos['soja_premio'] = v
+            if v := buscar_bolsa(['milho - cbot', 'milho - chicago'], 'US$'): self.precos['milho_cbot'] = v
+            if v := buscar_bolsa(['café - ny', 'café - nova york'], 'US$'): self.precos['cafe_ny'] = v
+            if v := buscar_bolsa(['café - londres'], 'US$'): self.precos['cafe_lon'] = v
+            if v := buscar_bolsa(['algodão - ny', 'algodão - nova york', 'algodão - ice'], 'US$'): self.precos['algodao_ny'] = v
+            if v := buscar_bolsa(['trigo - cbot', 'trigo - chicago'], 'US$'): self.precos['trigo_cbot'] = v
 
             # Praças Regionais Mercado Físico
-            if v := buscar_na_tabela('soja - mercado', 'rio verde'): self.precos['soja_go'] = v
-            if v := buscar_na_tabela('soja - mercado', 'rondonópolis'): self.precos['soja_mt'] = v
-            if v := buscar_na_tabela('milho - mercado', 'cascavel'): self.precos['milho_pr'] = v
-            if v := buscar_na_tabela('milho - mercado', 'sorriso'): self.precos['milho_mt'] = v
-            if v := buscar_na_tabela('boi gordo - mercado', 'goiânia'): self.precos['boi_go'] = v
-            if v := buscar_na_tabela('boi gordo - mercado', 'cuiabá'): self.precos['boi_mt'] = v
-            if v := buscar_na_tabela('laranja - mercado', 'indústria'): self.precos['laranja_sp'] = v
+            if v := buscar_por_praca('soja', 'rio verde'): self.precos['soja_go'] = v
+            if v := buscar_por_praca('soja', 'rondonópolis'): self.precos['soja_mt'] = v
+            if v := buscar_por_praca('milho', 'cascavel'): self.precos['milho_pr'] = v
+            if v := buscar_por_praca('milho', 'sorriso'): self.precos['milho_mt'] = v
+            if v := buscar_por_praca(['boi', 'boi gordo'], 'goiânia'): self.precos['boi_go'] = v
+            if v := buscar_por_praca(['boi', 'boi gordo'], 'cuiabá'): self.precos['boi_mt'] = v
+            if v := buscar_por_praca('laranja', 'indústria'): self.precos['laranja_sp'] = v
 
         except Exception as e:
             logging.error(f"Erro ao ler Bolsas/Praças extra: {e}")
@@ -689,19 +692,26 @@ class CepeaETL:
             'Origin': 'https://finance.yahoo.com'
         }
         
-        tickers = {
-            'soja': 'ZS=F', 'milho': 'ZC=F', 'cafe': 'KC=F', 
-            'algodao': 'CT=F', 'boi': 'LE=F', 'trigo': 'ZW=F'
+        tickers_cfg = {
+            'soja': {'t': 'ZS=F', 'div': 100}, 
+            'milho': {'t': 'ZC=F', 'div': 100}, 
+            'cafe': {'t': 'KC=F', 'div': 100}, 
+            'algodao': {'t': 'CT=F', 'div': 100}, 
+            'boi': {'t': 'LE=F', 'div': 100}, 
+            'trigo': {'t': 'ZW=F', 'div': 100}
         }
         
-        for name, ticker in tickers.items():
+        for name, cfg in tickers_cfg.items():
+            ticker = cfg['t']
+            divisor = cfg['div']
             url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1mo&period1={period1}&period2={period2}"
             try:
                 res = requests.get(url, headers=headers, timeout=15)
                 if res.status_code == 200:
                     data = res.json()['chart']['result'][0]
                     timestamps = data['timestamp']
-                    closes = data['indicators']['quote'][0]['close']
+                    raw_closes = data['indicators']['quote'][0]['close']
+                    closes = [c / divisor if c is not None else None for c in raw_closes]
                     
                     df_hist = pd.DataFrame({'ts': timestamps, 'close': closes})
                     df_hist['date'] = pd.to_datetime(df_hist['ts'], unit='s')
