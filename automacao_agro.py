@@ -507,7 +507,7 @@ class AgroETL:
                 <div class="dashboard-container">
                     <div class="navbar">
                         <a href="index.html" class="nav-link active">Painel VBP (Renda)</a>
-                        <a href="precos.html" class="nav-link">Painel de Preços (CEPEA)</a>
+                        <a href="precos.html" class="nav-link">Cotações Internacionais</a>
                     </div>
                     <div class="header">
                         <div class="title-area">
@@ -597,33 +597,7 @@ class CepeaETL:
         self.precos = {}
         self.historico = {}
 
-    def extrair_cotacoes_reais(self):
-        logging.info("--- COLETANDO COTAÇÕES REAIS (CEPEA) ---")
-        
-        # Criando um navegador blindado para contornar bloqueios do Cloudflare na Nuvem
-        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
-        
-        try:
-            r = scraper.get("https://www.cepea.esalq.usp.br/br/widget.aspx", timeout=15)
-            soup = BeautifulSoup(r.text, 'html.parser')
-            for tr in soup.find_all('tr'):
-                tds = tr.find_all(['th', 'td'])
-                if len(tds) >= 2:
-                    nome = tds[0].text.strip().lower()
-                    val = tds[1].text.strip()
-                    if not val: continue
-                    
-                    if 'soja' in nome: self.precos['soja_br'] = f"R$ {val}"
-                    elif 'milho' in nome: self.precos['milho_br'] = f"R$ {val}"
-                    elif 'boi' in nome and 'bezerro' not in nome: self.precos['boi_br'] = f"R$ {val}"
-                    elif 'arábica' in nome: self.precos['cafe_arabica'] = f"R$ {val}"
-                    elif 'conilon' in nome: self.precos['cafe_conilon'] = f"R$ {val}"
-                    elif 'algodão' in nome: self.precos['algodao_br'] = f"R$ {val}"
-                    elif 'trigo' in nome: self.precos['trigo_br'] = f"R$ {val}"
-        except Exception as e:
-            logging.error(f"Erro ao acessar CEPEA: {e}")
-
-    def get_preco(self, chave, default="R$ --,--"):
+    def get_preco(self, chave, default="US$ --,--"):
         return self.precos.get(chave, default)
 
     def extrair_historico_tendencia(self):
@@ -673,7 +647,7 @@ class CepeaETL:
     def formatar_tendencia(self, chave, unidade="US$"):
         hist = self.historico.get(chave)
         if not hist:
-            return f'''<div class="price-row" style="margin-top: 15px;"><span>Evolução Histórica</span> <strong>Dados indisponíveis</strong></div>'''
+            return f'''<div class="hist-section"><div style="text-align: center; color: var(--text-muted); padding: 15px;">Evolução Histórica indisponível</div></div>'''
         
         moeda = unidade.split('/')[0].strip() if '/' in unidade else unidade
 
@@ -710,34 +684,34 @@ class CepeaETL:
             m1_th, m2_th = "--/--", "--/--"
 
         return f'''
-                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica ({unidade})</div>
-                    <table class="hist-table">
-                        <thead>
-                            <tr>
-                                <th>Média 23</th>
-                                <th>Média 24</th>
-                                <th>Média 25</th>
-                                <th>{m1_th}</th>
-                                <th>{m2_th}</th>
-                                <th>Var. Mês</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>{avg_23}</td>
-                                <td>{avg_24}</td>
-                                <td>{avg_25}</td>
-                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">{m1_str}</td>
-                                <td style="background-color: #f8f9fa;">{m2_str}</td>
-                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;">{var_str}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="hist-section">
+                        <table class="hist-table">
+                            <thead>
+                                <tr>
+                                    <th>Média 23</th>
+                                    <th>Média 24</th>
+                                    <th>Média 25</th>
+                                    <th>{m1_th}</th>
+                                    <th>{m2_th}</th>
+                                    <th>Var. Mês</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>{avg_23}</td>
+                                    <td>{avg_24}</td>
+                                    <td>{avg_25}</td>
+                                    <td style="background-color: #f8f9fa;">{m1_str}</td>
+                                    <td style="background-color: #f8f9fa;">{m2_str}</td>
+                                    <td style="background-color: #f8f9fa;">{var_str}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 '''
 
     def gerar_relatorio_precos(self):
-        logging.info("--- GERANDO PÁGINA DE PREÇOS (CEPEA) ---")
-        self.extrair_cotacoes_reais()
+        logging.info("--- GERANDO PÁGINA DE COTAÇÕES INTERNACIONAIS ---")
         self.extrair_historico_tendencia()
         
         caminho_html = os.path.join(self.dir_relatorios, 'precos.html')
@@ -748,9 +722,9 @@ class CepeaETL:
             <html lang="pt-BR">
             <head>
                 <meta charset="utf-8">
-                <title>Painel Preços Agrícolas - CEPEA</title>
+                <title>Painel Cotações Internacionais</title>
                 <style>
-                    :root {{ --agco-red: #BA0C2F; --text-main: #2c3e50; --bg-page: #f4f7f6; --bg-card: #ffffff; --header-bg: #1e293b; }}
+                    :root {{ --agco-red: #BA0C2F; --text-main: #2c3e50; --bg-page: #f4f7f6; --bg-card: #ffffff; --header-bg: #1e293b; --border-light: #e9ecef; --text-muted: #6c757d; --positive: #107C41; --negative: #D83B01; }}
                     body {{ background-color: var(--bg-page); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: var(--text-main); }}
                     .dashboard-container {{ background-color: var(--bg-card); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05); max-width: 1550px; margin: 0 auto; overflow: hidden; }}
                     .navbar {{ background-color: var(--text-main); padding: 0 30px; display: flex; align-items: center; border-bottom: 2px solid var(--agco-red); }}
@@ -762,124 +736,143 @@ class CepeaETL:
                     .header p {{ color: #94a3b8; margin: 0; font-size: 1em; font-weight: 500; }}
                     .content-area {{ padding: 30px 40px; text-align: left; display: block; }}
                     
-                    /* Grid de Preços */
-                    .commodity-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-top: 10px; width: 100%; }}
-                    .commodity-card {{ background: #fff; border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }}
-                    .commodity-header {{ background: var(--text-main); color: #fff; padding: 15px 20px; font-weight: 700; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--agco-red); }}
-                    .price-section {{ padding: 15px 20px; border-bottom: 1px solid var(--border-light); background-color: #fafafa; }}
-                    .price-section:last-child {{ border-bottom: none; background-color: #fff; }}
-                    .section-title {{ font-size: 0.8em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 12px; letter-spacing: 0.5px; }}
-                    .price-row {{ display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95em; border-bottom: 1px dashed #e2e8f0; padding-bottom: 5px; }}
-                    .price-row:last-child {{ margin-bottom: 0; border-bottom: none; padding-bottom: 0; }}
-                    .price-row span {{ color: #475569; }}
-                    .price-row strong {{ color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }}
+                    /* Grid de Preços Refatorado */
+                    .commodity-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 30px; margin-top: 10px; width: 100%; }}
+                    .commodity-card {{ background: #fff; border: 1px solid var(--border-light); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.03); transition: transform 0.2s; }}
+                    .commodity-card:hover {{ transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.08); }}
+                    .commodity-header {{ background: var(--header-bg); color: #fff; padding: 18px 25px; font-weight: 700; font-size: 1.2em; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--agco-red); }}
+                    .exchange-tag {{ font-size: 0.65em; background: rgba(255,255,255,0.15); padding: 5px 12px; border-radius: 20px; letter-spacing: 0.5px; font-weight: 700; text-transform: uppercase; color: #e2e8f0; }}
                     
-                    /* Mini-tabela de Evolução Histórica */
-                    .hist-table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 5px; }}
-                    .hist-table th {{ background-color: #f8f9fa; color: var(--text-muted); padding: 8px 2px; text-align: center; font-weight: 700; font-size: 0.85em; border-bottom: 2px solid var(--border-light); }}
-                    .hist-table td {{ padding: 10px 2px; text-align: center; font-weight: 700; color: var(--text-main); border-bottom: 1px solid var(--border-light); white-space: nowrap; }}
+                    .current-price-hero {{ padding: 35px 25px 20px 25px; text-align: center; }}
+                    .price-label {{ font-size: 0.8em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; letter-spacing: 1.5px; margin-bottom: 10px; }}
+                    .price-value {{ font-size: 3em; font-weight: 900; color: var(--text-main); letter-spacing: -1.5px; display: flex; align-items: baseline; justify-content: center; gap: 8px; line-height: 1; }}
+                    .price-currency {{ font-size: 0.4em; font-weight: 700; color: var(--text-muted); letter-spacing: 0; }}
+                    .price-unit {{ font-size: 0.35em; color: var(--text-muted); font-weight: 700; text-transform: lowercase; letter-spacing: 0; }}
+                    
+                    .hist-section {{ padding: 0 25px 30px 25px; }}
+                    .hist-table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-light); }}
+                    .hist-table th {{ background-color: #f8f9fa; color: var(--text-muted); padding: 12px 5px; text-align: center; font-weight: 700; font-size: 0.8em; border-bottom: 2px solid var(--border-light); text-transform: uppercase; }}
+                    .hist-table td {{ padding: 15px 5px; text-align: center; font-weight: 700; color: var(--text-main); border-bottom: 1px solid var(--border-light); white-space: nowrap; background-color: #fff; }}
                     .hist-table tr:last-child td {{ border-bottom: none; }}
+                    .trend-pill {{ display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.95em; font-weight: 800; }}
                 </style>
             </head>
             <body>
                 <div class="dashboard-container">
                     <div class="navbar">
                         <a href="index.html" class="nav-link">Painel VBP (Renda)</a>
-                        <a href="precos.html" class="nav-link active">Painel de Preços (CEPEA)</a>
+                        <a href="precos.html" class="nav-link active">Cotações Internacionais</a>
                     </div>
                     <div class="header">
-                        <h2>Painel de Preços Agrícolas</h2>
-                        <p>Acompanhamento de Cotações - Médias Mensais (CEPEA-ESALQ)</p>
+                        <h2>Cotações Internacionais</h2>
+                        <p>Acompanhamento de Mercado das Principais Commodities (Bolsas)</p>
                     </div>
                     <div class="content-area">
                         <p style="color: #64748b; font-size: 1.05em; margin-top: 0; margin-bottom: 25px; border-left: 4px solid var(--agco-red); padding-left: 15px;">
-                            Estrutura preparada para receber integração com as <strong>Médias Mensais do Mercado Interno (CEPEA)</strong> e <strong>Mercado Internacional (Bolsas)</strong>.
+                            Valores atualizados com base no fechamento mensal consolidado (Fonte: Yahoo Finance).
                         </p>
                         
                         <div class="commodity-grid">
                             <!-- Soja -->
                             <div class="commodity-card">
-                                <div class="commodity-header"><span>🌱 Soja</span></div>
-                                <div class="price-section">
-                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
-                                    <div class="price-row"><span>Mercado Físico (Paraná)</span> <strong>{self.get_preco('soja_br')} / sc 60kg</strong></div>
+                                <div class="commodity-header">
+                                    <span>🌱 Soja</span>
+                                    <span class="exchange-tag">CBOT (Chicago)</span>
                                 </div>
-                                <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('soja_int', '--,--')} / bu</strong></div>
-                                    {self.formatar_tendencia('soja', 'US$ / bu')}
+                                <div class="current-price-hero">
+                                    <div class="price-label">Cotação Atual</div>
+                                    <div class="price-value">
+                                        <span class="price-currency">US$</span>
+                                        {self.get_preco('soja_int', '--,--')}
+                                        <span class="price-unit">/ bu</span>
+                                    </div>
                                 </div>
+                                {self.formatar_tendencia('soja', 'US$ / bu')}
                             </div>
 
                             <!-- Milho -->
                             <div class="commodity-card">
-                                <div class="commodity-header"><span>🌽 Milho</span></div>
-                                <div class="price-section">
-                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
-                                    <div class="price-row"><span>Mercado Físico (Campinas-SP)</span> <strong>{self.get_preco('milho_br')} / sc 60kg</strong></div>
+                                <div class="commodity-header">
+                                    <span>🌽 Milho</span>
+                                    <span class="exchange-tag">CBOT (Chicago)</span>
                                 </div>
-                                <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('milho_int', '--,--')} / bu</strong></div>
-                                    {self.formatar_tendencia('milho', 'US$ / bu')}
+                                <div class="current-price-hero">
+                                    <div class="price-label">Cotação Atual</div>
+                                    <div class="price-value">
+                                        <span class="price-currency">US$</span>
+                                        {self.get_preco('milho_int', '--,--')}
+                                        <span class="price-unit">/ bu</span>
+                                    </div>
                                 </div>
+                                {self.formatar_tendencia('milho', 'US$ / bu')}
                             </div>
 
                             <!-- Café -->
                             <div class="commodity-card">
-                                <div class="commodity-header"><span>☕ Café</span></div>
-                                <div class="price-section">
-                                    <div class="section-title">Indicadores Nacionais (CEPEA)</div>
-                                    <div class="price-row"><span>Arábica (São Paulo)</span> <strong>{self.get_preco('cafe_arabica')} / sc 60kg</strong></div>
-                                    <div class="price-row"><span>Conilon (Espírito Santo)</span> <strong>{self.get_preco('cafe_conilon')} / sc 60kg</strong></div>
+                                <div class="commodity-header">
+                                    <span>☕ Café</span>
+                                    <span class="exchange-tag">ICE (Nova York)</span>
                                 </div>
-                                <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>ICE (Nova York)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('cafe_int', '--,--')} / lb</strong></div>
-                                    {self.formatar_tendencia('cafe', 'US$ / lb')}
+                                <div class="current-price-hero">
+                                    <div class="price-label">Cotação Atual</div>
+                                    <div class="price-value">
+                                        <span class="price-currency">US$</span>
+                                        {self.get_preco('cafe_int', '--,--')}
+                                        <span class="price-unit">/ lb</span>
+                                    </div>
                                 </div>
+                                {self.formatar_tendencia('cafe', 'US$ / lb')}
                             </div>
 
                             <!-- Algodão -->
                             <div class="commodity-card">
-                                <div class="commodity-header"><span>☁️ Algodão</span></div>
-                                <div class="price-section">
-                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
-                                    <div class="price-row"><span>Mercado Físico (Brasil)</span> <strong>{self.get_preco('algodao_br')} / lp</strong></div>
+                                <div class="commodity-header">
+                                    <span>☁️ Algodão</span>
+                                    <span class="exchange-tag">ICE (Nova York)</span>
                                 </div>
-                                <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>ICE (Nova York)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('algodao_int', '--,--')} / lb</strong></div>
-                                    {self.formatar_tendencia('algodao', 'US$ / lb')}
+                                <div class="current-price-hero">
+                                    <div class="price-label">Cotação Atual</div>
+                                    <div class="price-value">
+                                        <span class="price-currency">US$</span>
+                                        {self.get_preco('algodao_int', '--,--')}
+                                        <span class="price-unit">/ lb</span>
+                                    </div>
                                 </div>
+                                {self.formatar_tendencia('algodao', 'US$ / lb')}
                             </div>
 
                             <!-- Boi Gordo -->
                             <div class="commodity-card">
-                                <div class="commodity-header"><span>🐂 Boi Gordo</span></div>
-                                <div class="price-section">
-                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
-                                    <div class="price-row"><span>Mercado Físico (São Paulo)</span> <strong>{self.get_preco('boi_br')} / @</strong></div>
+                                <div class="commodity-header">
+                                    <span>🐂 Boi Gordo</span>
+                                    <span class="exchange-tag">CME (EUA)</span>
                                 </div>
-                                <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('boi_int', '--,--')} / lb</strong></div>
-                                    {self.formatar_tendencia('boi', 'US$ / lb')}
+                                <div class="current-price-hero">
+                                    <div class="price-label">Cotação Atual</div>
+                                    <div class="price-value">
+                                        <span class="price-currency">US$</span>
+                                        {self.get_preco('boi_int', '--,--')}
+                                        <span class="price-unit">/ lb</span>
+                                    </div>
                                 </div>
+                                {self.formatar_tendencia('boi', 'US$ / lb')}
                             </div>
 
                             <!-- Trigo -->
                             <div class="commodity-card">
-                                <div class="commodity-header"><span>🌾 Trigo</span></div>
-                                <div class="price-section">
-                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
-                                    <div class="price-row"><span>Mercado Físico (Paraná)</span> <strong>{self.get_preco('trigo_br')} / ton</strong></div>
+                                <div class="commodity-header">
+                                    <span>🌾 Trigo</span>
+                                    <span class="exchange-tag">CBOT (Chicago)</span>
                                 </div>
-                                <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('trigo_int', '--,--')} / bu</strong></div>
-                                    {self.formatar_tendencia('trigo', 'US$ / bu')}
+                                <div class="current-price-hero">
+                                    <div class="price-label">Cotação Atual</div>
+                                    <div class="price-value">
+                                        <span class="price-currency">US$</span>
+                                        {self.get_preco('trigo_int', '--,--')}
+                                        <span class="price-unit">/ bu</span>
+                                    </div>
                                 </div>
+                                {self.formatar_tendencia('trigo', 'US$ / bu')}
                             </div>
                             
                         </div>
