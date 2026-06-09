@@ -6,15 +6,20 @@
                 <title>Painel Cotações Internacionais</title>
                 <style>
                     :root { --agco-red: #BA0C2F; --text-main: #2c3e50; --bg-page: #f4f7f6; --bg-card: #ffffff; --header-bg: #1e293b; --border-light: #e9ecef; --text-muted: #6c757d; --positive: #107C41; --negative: #D83B01; }
-                    body { background-color: var(--bg-page); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: var(--text-main); }
+                    body { background-color: var(--bg-page); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: var(--text-main); top: 0 !important; }
+                    .skiptranslate { display: none !important; }
                     .dashboard-container { background-color: var(--bg-card); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05); max-width: 1550px; margin: 0 auto; overflow: hidden; }
                     .navbar { background-color: var(--text-main); padding: 0 30px; display: flex; align-items: center; border-bottom: 2px solid var(--agco-red); }
                     .nav-link { color: #94a3b8; text-decoration: none; padding: 12px 20px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; border-bottom: 3px solid transparent; }
                     .nav-link:hover { color: #ffffff; }
                     .nav-link.active { color: #ffffff; border-bottom-color: var(--agco-red); }
-                    .header { padding: 30px; background-color: var(--header-bg); border-bottom: 4px solid var(--agco-red); }
-                    .header h2 { margin: 0 0 5px 0; font-size: 1.8em; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
-                    .header p { color: #94a3b8; margin: 0; font-size: 1em; font-weight: 500; }
+                    .header { display: flex; justify-content: space-between; align-items: center; background-color: var(--header-bg); padding: 20px 30px; border-bottom: 4px solid var(--agco-red); }
+                    .title-area h2 { margin: 0 0 5px 0; font-size: 1.8em; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+                    .title-area p { color: #94a3b8; margin: 0; font-size: 1em; font-weight: 500; }
+                    .developer-info { text-align: right; color: #94a3b8; font-size: 0.9em; line-height: 1.4; }
+                    .developer-info strong { color: #ffffff; font-size: 1.15em; display: block; margin-top: 4px; font-weight: 600; }
+                    .btn-lang { background: #ffffff; border: 1px solid var(--border-light); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; color: var(--text-main); margin-left: 5px; transition: 0.2s; }
+                    .btn-lang:hover { background: #e9ecef; }
                     .content-area { padding: 30px 40px; text-align: left; display: block; }
                     
                     /* Grid de Preços Refatorado */
@@ -39,14 +44,26 @@
                 </style>
             </head>
             <body>
+                <div id="google_translate_element" style="display:none;"></div>
                 <div class="dashboard-container">
                     <div class="navbar">
                         <a href="index.html" class="nav-link">Painel VBP (Renda)</a>
                         <a href="precos.html" class="nav-link active">Cotações Internacionais</a>
                     </div>
                     <div class="header">
-                        <h2>Cotações Internacionais</h2>
-                        <p>Acompanhamento de Mercado das Principais Commodities (Bolsas)</p>
+                        <div class="title-area">
+                            <h2>Cotações Internacionais</h2>
+                            <p>Acompanhamento de Mercado das Principais Commodities (Bolsas)</p>
+                        </div>
+                        <div class="developer-info">
+                            Desenvolvido por<br>
+                            <strong>Reporting & Analytics AGCO</strong>
+                            <div style="margin-top: 8px;">
+                                <button class="btn-lang" onclick="doGTranslate('pt')">🇧🇷 PT</button>
+                                <button class="btn-lang" onclick="doGTranslate('en')">🇺🇸 EN</button>
+                                <button class="btn-lang" onclick="doGTranslate('es')">🇪🇸 ES</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="content-area">
                         <p style="color: #64748b; font-size: 1.05em; margin-top: 0; margin-bottom: 25px; border-left: 4px solid var(--agco-red); padding-left: 15px;">
