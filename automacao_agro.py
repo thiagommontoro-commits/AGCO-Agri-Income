@@ -710,16 +710,14 @@ class CepeaETL:
                     avg_24 = hist[hist['year'] == 2024]['close_adj'].mean()
                     avg_25 = hist[hist['year'] == 2025]['close_adj'].mean()
                     
-                    max_year = hist['year'].max()
-                    df_curr = hist[hist['year'] == max_year].sort_index()
-                    meses_curr = [(f"{int(row['month']):02d}", row['close_adj']) for _, row in df_curr.iterrows()]
+                    last_two = hist.sort_index().dropna(subset=['close_adj']).tail(2)
+                    last_two_data = [(f"{str(idx.year)[-2:]}/{int(row['month']):02d}", row['close_adj']) for idx, row in last_two.iterrows()]
                     
                     self.historico[name] = {
                         'avg_2023': avg_23 if not pd.isna(avg_23) else None,
                         'avg_2024': avg_24 if not pd.isna(avg_24) else None,
                         'avg_2025': avg_25 if not pd.isna(avg_25) else None,
-                        'max_year': max_year,
-                        'meses_atual': meses_curr
+                        'last_two': last_two_data
                     }
                 else:
                     self.historico[name] = None
@@ -743,30 +741,29 @@ class CepeaETL:
         avg_24 = fmt(hist.get('avg_2024'))
         avg_25 = fmt(hist.get('avg_2025'))
         
-        meses = hist.get('meses_atual', [])
-        max_y = hist.get('max_year', 2026)
+        last_two = hist.get('last_two', [])
 
-        if len(meses) >= 2:
-            m1_name, m1_val = meses[-2]
-            m2_name, m2_val = meses[-1]
+        if len(last_two) >= 2:
+            m1_name, m1_val = last_two[-2]
+            m2_name, m2_val = last_two[-1]
             var = ((m2_val - m1_val) / m1_val) * 100 if m1_val else 0
             cor = "var(--positive)" if var > 0 else "var(--negative)"
             sinal = "+" if var > 0 else ""
             var_str = f'<span style="color: {cor};">{sinal}{var:.1f}%</span>'
             m1_str = fmt(m1_val)
             m2_str = fmt(m2_val)
-            m1_th = f"{max_y}/{m1_name}"
-            m2_th = f"{max_y}/{m2_name}"
-        elif len(meses) == 1:
-            m2_name, m2_val = meses[-1]
+            m1_th = m1_name
+            m2_th = m2_name
+        elif len(last_two) == 1:
+            m2_name, m2_val = last_two[-1]
             var_str = "-"
             m1_str = "-"
             m2_str = fmt(m2_val)
-            m1_th = f"{max_y}/--"
-            m2_th = f"{max_y}/{m2_name}"
+            m1_th = "--/--"
+            m2_th = m2_name
         else:
             m1_str, m2_str, var_str = "-", "-", "-"
-            m1_th, m2_th = f"{max_y}/01", f"{max_y}/02"
+            m1_th, m2_th = "--/--", "--/--"
 
         return f'''<div class="price-section" style="padding-top: 15px;">
                     <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica ({unidade})</div>
