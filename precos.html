@@ -30,9 +30,10 @@
                     .price-row strong { color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }
                     
                     /* Mini-tabela de Evolução Histórica */
-                    .hist-table { width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 5px; }
-                    .hist-table th { background-color: #f1f5f9; color: var(--text-muted); padding: 6px 2px; text-align: center; font-weight: 700; font-size: 0.9em; border: 1px solid var(--border-light); }
-                    .hist-table td { background-color: #fff; border: 1px solid var(--border-light); padding: 8px 1px; text-align: center; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+                    .hist-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 5px; }
+                    .hist-table th { background-color: #f8f9fa; color: var(--text-muted); padding: 8px 2px; text-align: center; font-weight: 700; font-size: 0.85em; border-bottom: 2px solid var(--border-light); }
+                    .hist-table td { padding: 10px 2px; text-align: center; font-weight: 700; color: var(--text-main); border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+                    .hist-table tr:last-child td { border-bottom: none; }
                 </style>
             </head>
             <body>
@@ -60,10 +61,9 @@
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ 11.14 / bu</strong></div>
-                                </div>
-                                <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / bu)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ 11.14 / bu</strong></div>
+                                    
+                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica (US$ / bu)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -80,13 +80,14 @@
                                 <td>US$ 14.01</td>
                                 <td>US$ 11.03</td>
                                 <td>US$ 10.38</td>
-                                <td>US$ 11.87</td>
-                                <td>US$ 11.14</td>
-                                <td><span style="color: var(--negative);">-6.1%</span></td>
+                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">US$ 11.87</td>
+                                <td style="background-color: #f8f9fa;">US$ 11.14</td>
+                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;"><span style="color: var(--negative); background: rgba(216,59,1,0.1); padding: 3px 6px; border-radius: 4px;">-6.1%</span></td>
                             </tr>
                         </tbody>
                     </table>
-                   </div>
+                
+                                </div>
                             </div>
 
                             <!-- Milho -->
@@ -98,10 +99,9 @@
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ 4.20 / bu</strong></div>
-                                </div>
-                                <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / bu)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ 4.20 / bu</strong></div>
+                                    
+                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica (US$ / bu)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -118,13 +118,14 @@
                                 <td>US$ 5.45</td>
                                 <td>US$ 4.18</td>
                                 <td>US$ 4.38</td>
-                                <td>US$ 4.47</td>
-                                <td>US$ 4.20</td>
-                                <td><span style="color: var(--negative);">-6.0%</span></td>
+                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">US$ 4.47</td>
+                                <td style="background-color: #f8f9fa;">US$ 4.20</td>
+                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;"><span style="color: var(--negative); background: rgba(216,59,1,0.1); padding: 3px 6px; border-radius: 4px;">-6.0%</span></td>
                             </tr>
                         </tbody>
                     </table>
-                   </div>
+                
+                                </div>
                             </div>
 
                             <!-- Café -->
@@ -137,10 +138,9 @@
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>US$ 2.45 / lb</strong></div>
-                                </div>
-                                <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / lb)</div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong style="font-size: 1.1em;">US$ 2.45 / lb</strong></div>
+                                    
+                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica (US$ / lb)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -157,13 +157,14 @@
                                 <td>US$ 1.74</td>
                                 <td>US$ 2.30</td>
                                 <td>US$ 3.74</td>
-                                <td>US$ 2.66</td>
-                                <td>US$ 2.45</td>
-                                <td><span style="color: var(--negative);">-7.7%</span></td>
+                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">US$ 2.66</td>
+                                <td style="background-color: #f8f9fa;">US$ 2.45</td>
+                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;"><span style="color: var(--negative); background: rgba(216,59,1,0.1); padding: 3px 6px; border-radius: 4px;">-7.7%</span></td>
                             </tr>
                         </tbody>
                     </table>
-                   </div>
+                
+                                </div>
                             </div>
 
                             <!-- Algodão -->
@@ -175,10 +176,9 @@
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>US$ 0.76 / lb</strong></div>
-                                </div>
-                                <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / lb)</div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong style="font-size: 1.1em;">US$ 0.76 / lb</strong></div>
+                                    
+                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica (US$ / lb)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -195,13 +195,14 @@
                                 <td>US$ 0.83</td>
                                 <td>US$ 0.77</td>
                                 <td>US$ 0.65</td>
-                                <td>US$ 0.76</td>
-                                <td>US$ 0.76</td>
-                                <td><span style="color: var(--positive);">+0.1%</span></td>
+                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">US$ 0.76</td>
+                                <td style="background-color: #f8f9fa;">US$ 0.76</td>
+                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;"><span style="color: var(--positive); background: rgba(16,124,65,0.1); padding: 3px 6px; border-radius: 4px;">+0.1%</span></td>
                             </tr>
                         </tbody>
                     </table>
-                   </div>
+                
+                                </div>
                             </div>
 
                             <!-- Boi Gordo -->
@@ -213,10 +214,9 @@
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>US$ 2.40 / lb</strong></div>
-                                </div>
-                                <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / lb)</div>
+                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong style="font-size: 1.1em;">US$ 2.40 / lb</strong></div>
+                                    
+                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica (US$ / lb)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -233,13 +233,14 @@
                                 <td>US$ 1.75</td>
                                 <td>US$ 1.86</td>
                                 <td>US$ 2.21</td>
-                                <td>US$ 2.48</td>
-                                <td>US$ 2.40</td>
-                                <td><span style="color: var(--negative);">-3.4%</span></td>
+                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">US$ 2.48</td>
+                                <td style="background-color: #f8f9fa;">US$ 2.40</td>
+                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;"><span style="color: var(--negative); background: rgba(216,59,1,0.1); padding: 3px 6px; border-radius: 4px;">-3.4%</span></td>
                             </tr>
                         </tbody>
                     </table>
-                   </div>
+                
+                                </div>
                             </div>
 
                             <!-- Trigo -->
@@ -251,10 +252,9 @@
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ 5.85 / bu</strong></div>
-                                </div>
-                                <div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional (US$ / bu)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ 5.85 / bu</strong></div>
+                                    
+                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica (US$ / bu)</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -271,13 +271,14 @@
                                 <td>US$ 6.21</td>
                                 <td>US$ 5.71</td>
                                 <td>US$ 5.27</td>
-                                <td>US$ 6.11</td>
-                                <td>US$ 5.85</td>
-                                <td><span style="color: var(--negative);">-4.2%</span></td>
+                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">US$ 6.11</td>
+                                <td style="background-color: #f8f9fa;">US$ 5.85</td>
+                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;"><span style="color: var(--negative); background: rgba(216,59,1,0.1); padding: 3px 6px; border-radius: 4px;">-4.2%</span></td>
                             </tr>
                         </tbody>
                     </table>
-                   </div>
+                
+                                </div>
                             </div>
                             
                         </div>
