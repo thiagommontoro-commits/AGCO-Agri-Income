@@ -124,3 +124,9 @@
 2026-06-09 13:45:03,900 - [ INFO ] - --- COLETANDO COTAÇÕES REAIS (CEPEA E BOLSAS) ---
 2026-06-09 13:45:06,437 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
 2026-06-09 13:45:07,607 - [ INFO ] - Sucesso! Relatório de preços gerado em: {os.path.abspath(caminho_html)}
+2026-06-09 14:25:23,456 - [ INFO ] - --- INICIANDO WEB SCRAPING ---
+2026-06-09 14:25:43,745 - [ ERROR ] - Falha de conexão com o site: HTTPSConnectionPool(host='www.gov.br', port=443): Max retries exceeded with url: /agricultura/pt-br/assuntos/politica-agricola/valor-bruto-da-producao-agropecuaria-vbp (Caused by NewConnectionError("HTTPSConnection(host='www.gov.br', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
+2026-06-09 14:25:43,745 - [ INFO ] - --- GERANDO PÁGINA DE PREÇOS (CEPEA) ---
+2026-06-09 14:25:43,745 - [ INFO ] - --- COLETANDO COTAÇÕES REAIS (CEPEA E BOLSAS) ---
+2026-06-09 14:25:45,625 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
+2026-06-09 14:25:46,163 - [ INFO ] - Sucesso! Relatório de preços gerado em: /home/runner/work/AGCO-AgriIntel/AGCO-AgriIntel/precos.html
