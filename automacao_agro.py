@@ -9,6 +9,7 @@ from datetime import datetime
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import pandas as pd
+import yfinance as yf
 
 # ==========================================
 # 1. CONFIGURAÇÃO DE CAMINHOS E LOGS
@@ -633,48 +634,49 @@ class CepeaETL:
             r = requests.get("https://www.noticiasagricolas.com.br/cotacoes/", headers=headers, timeout=15)
             soup = BeautifulSoup(r.text, 'html.parser')
             
-            def buscar_por_praca(culturas, praca, simbolo="R$"):
-                if isinstance(culturas, str): culturas = [culturas]
-                for table in soup.find_all('table'):
-                    parent = table.find_previous(['h1', 'h2', 'h3', 'h4', 'div', 'th'])
-                    parent_text = parent.text.lower() if parent else ""
-                    if any(c.lower() in parent_text for c in culturas):
-                        for tr in table.find_all('tr'):
-                            tds = tr.find_all('td')
-                            if len(tds) >= 2 and praca.lower() in tds[0].text.lower():
-                                return f"{simbolo} {tds[1].text.strip()}"
-                return None
-
-            def buscar_bolsa(nomes_bolsa, simbolo="US$"):
-                if isinstance(nomes_bolsa, str): nomes_bolsa = [nomes_bolsa]
-                for table in soup.find_all('table'):
-                    parent = table.find_previous(['h1', 'h2', 'h3', 'h4', 'div', 'th'])
-                    parent_text = parent.text.lower() if parent else ""
-                    if any(nome.lower() in parent_text for nome in nomes_bolsa):
-                        tbody = table.find('tbody') or table
-                        for tr in tbody.find_all('tr'):
-                            tds = tr.find_all('td')
-                            if len(tds) >= 2:
-                                return f"{simbolo} {tds[1].text.strip()}"
-                return None
-
-            # Bolsas Internacionais (Chicago / NY / Londres)
-            if v := buscar_bolsa(['soja - cbot', 'soja - chicago'], 'US$'): self.precos['soja_cbot'] = v
-            if v := buscar_bolsa(['soja - prêmios', 'prêmios'], 'US$'): self.precos['soja_premio'] = v
-            if v := buscar_bolsa(['milho - cbot', 'milho - chicago'], 'US$'): self.precos['milho_cbot'] = v
-            if v := buscar_bolsa(['café - ny', 'café - nova york'], 'US$'): self.precos['cafe_ny'] = v
-            if v := buscar_bolsa(['café - londres'], 'US$'): self.precos['cafe_lon'] = v
-            if v := buscar_bolsa(['algodão - ny', 'algodão - nova york', 'algodão - ice'], 'US$'): self.precos['algodao_ny'] = v
-            if v := buscar_bolsa(['trigo - cbot', 'trigo - chicago'], 'US$'): self.precos['trigo_cbot'] = v
-
-            # Praças Regionais Mercado Físico
-            if v := buscar_por_praca('soja', 'rio verde'): self.precos['soja_go'] = v
-            if v := buscar_por_praca('soja', 'rondonópolis'): self.precos['soja_mt'] = v
-            if v := buscar_por_praca('milho', 'cascavel'): self.precos['milho_pr'] = v
-            if v := buscar_por_praca('milho', 'sorriso'): self.precos['milho_mt'] = v
-            if v := buscar_por_praca(['boi', 'boi gordo'], 'goiânia'): self.precos['boi_go'] = v
-            if v := buscar_por_praca(['boi', 'boi gordo'], 'cuiabá'): self.precos['boi_mt'] = v
-            if v := buscar_por_praca('laranja', 'indústria'): self.precos['laranja_sp'] = v
+            current_title = ""
+            for tag in soup.find_all(['h1', 'h2', 'h3', 'table', 'div']):
+                if tag.name in ['h1', 'h2', 'h3']:
+                    current_title = tag.text.lower()
+                elif tag.name == 'div' and tag.get('class') and 'titulo' in tag.get('class'):
+                    current_title = tag.text.lower()
+                elif tag.name == 'table':
+                    thead = tag.find('thead')
+                    if thead: current_title = thead.text.lower()
+                    
+                    for tr in tag.find_all('tr'):
+                        tds = tr.find_all('td')
+                        if len(tds) >= 2:
+                            row = tds[0].text.lower()
+                            val = tds[1].text.strip()
+                            
+                            if 'soja' in current_title or 'soja' in row:
+                                if 'cbot' in row or 'chicago' in row: self.precos['soja_cbot'] = f"US$ {val}"
+                                elif 'prêmio' in row: self.precos['soja_premio'] = f"US$ {val}"
+                                elif 'rio verde' in row: self.precos['soja_go'] = f"R$ {val}"
+                                elif 'rondonópolis' in row: self.precos['soja_mt'] = f"R$ {val}"
+                            
+                            if 'milho' in current_title or 'milho' in row:
+                                if 'cbot' in row or 'chicago' in row: self.precos['milho_cbot'] = f"US$ {val}"
+                                elif 'cascavel' in row: self.precos['milho_pr'] = f"R$ {val}"
+                                elif 'sorriso' in row: self.precos['milho_mt'] = f"R$ {val}"
+                            
+                            if 'café' in current_title or 'cafe' in current_title or 'café' in row:
+                                if 'ny' in row or 'nova york' in row: self.precos['cafe_ny'] = f"US$ {val}"
+                                elif 'londres' in row: self.precos['cafe_lon'] = f"US$ {val}"
+                                
+                            if 'algodão' in current_title or 'algodao' in current_title or 'algodão' in row:
+                                if 'ny' in row or 'nova york' in row or 'ice' in row: self.precos['algodao_ny'] = f"US$ {val}"
+                                
+                            if 'boi' in current_title or 'boi' in row:
+                                if 'goiânia' in row: self.precos['boi_go'] = f"R$ {val}"
+                                elif 'cuiabá' in row: self.precos['boi_mt'] = f"R$ {val}"
+                                
+                            if 'trigo' in current_title or 'trigo' in row:
+                                if 'cbot' in row or 'chicago' in row: self.precos['trigo_cbot'] = f"US$ {val}"
+                                
+                            if 'laranja' in current_title or 'citrus' in current_title:
+                                if 'indústria' in row: self.precos['laranja_sp'] = f"R$ {val}"
 
         except Exception as e:
             logging.error(f"Erro ao ler Bolsas/Praças extra: {e}")
@@ -686,12 +688,6 @@ class CepeaETL:
         logging.info("--- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---")
         period1 = 1672531200 # 01/01/2023 Timestamp
         period2 = int(datetime.now().timestamp())
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Origin': 'https://finance.yahoo.com'
-        }
-        
         tickers_cfg = {
             'soja': {'t': 'ZS=F', 'div': 100}, 
             'milho': {'t': 'ZC=F', 'div': 100}, 
@@ -702,30 +698,21 @@ class CepeaETL:
         }
         
         for name, cfg in tickers_cfg.items():
-            ticker = cfg['t']
-            divisor = cfg['div']
-            url = f"https://query2.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1mo&period1={period1}&period2={period2}"
             try:
-                res = requests.get(url, headers=headers, timeout=15)
-                if res.status_code == 200:
-                    data = res.json()['chart']['result'][0]
-                    timestamps = data['timestamp']
-                    raw_closes = data['indicators']['quote'][0]['close']
-                    closes = [c / divisor if c is not None else None for c in raw_closes]
+                tkr = yf.Ticker(cfg['t'])
+                hist = tkr.history(start="2023-01-01", interval="1mo")
+                if not hist.empty:
+                    hist['close_adj'] = hist['Close'] / cfg['div']
+                    hist['year'] = hist.index.year
+                    hist['month'] = hist.index.month
                     
-                    df_hist = pd.DataFrame({'ts': timestamps, 'close': closes})
-                    df_hist['date'] = pd.to_datetime(df_hist['ts'], unit='s')
-                    df_hist = df_hist.dropna(subset=['close'])
-                    df_hist['year'] = df_hist['date'].dt.year
-                    df_hist['month'] = df_hist['date'].dt.month
+                    avg_23 = hist[hist['year'] == 2023]['close_adj'].mean()
+                    avg_24 = hist[hist['year'] == 2024]['close_adj'].mean()
+                    avg_25 = hist[hist['year'] == 2025]['close_adj'].mean()
                     
-                    avg_23 = df_hist[df_hist['year'] == 2023]['close'].mean()
-                    avg_24 = df_hist[df_hist['year'] == 2024]['close'].mean()
-                    avg_25 = df_hist[df_hist['year'] == 2025]['close'].mean()
-                    
-                    max_year = df_hist['year'].max()
-                    df_curr = df_hist[df_hist['year'] == max_year].sort_values('date')
-                    meses_curr = [(f"{int(row['month']):02d}", row['close']) for _, row in df_curr.iterrows()]
+                    max_year = hist['year'].max()
+                    df_curr = hist[hist['year'] == max_year].sort_index()
+                    meses_curr = [(f"{int(row['month']):02d}", row['close_adj']) for _, row in df_curr.iterrows()]
                     
                     self.historico[name] = {
                         'avg_2023': avg_23 if not pd.isna(avg_23) else None,
@@ -737,7 +724,7 @@ class CepeaETL:
                 else:
                     self.historico[name] = None
             except Exception as e:
-                logging.error(f"Erro ao buscar histórico {name}: {e}")
+                logging.error(f"Erro yfinance {name}: {e}")
                 self.historico[name] = None
 
     def formatar_tendencia(self, chave, unidade="US$"):
