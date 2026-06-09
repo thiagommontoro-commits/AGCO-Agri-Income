@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 import pandas as pd
 import yfinance as yf
+import cloudscraper
 
 # ==========================================
 # 1. CONFIGURAÇÃO DE CAMINHOS E LOGS
@@ -598,16 +599,13 @@ class CepeaETL:
 
     def extrair_cotacoes_reais(self):
         logging.info("--- COLETANDO COTAÇÕES REAIS (CEPEA E BOLSAS) ---")
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-            'Referer': 'https://www.google.com/'
-        }
+        
+        # Criando um navegador blindado para contornar bloqueios do Cloudflare na Nuvem
+        scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
         
         # 1. Indicadores Oficiais CEPEA (Mercado Interno Base)
         try:
-            r = requests.get("https://www.cepea.esalq.usp.br/br/widget.aspx", headers=headers, timeout=15)
+            r = scraper.get("https://www.cepea.esalq.usp.br/br/widget.aspx", timeout=15)
             soup = BeautifulSoup(r.text, 'html.parser')
             for tr in soup.find_all('tr'):
                 th = tr.find('th')
@@ -631,7 +629,7 @@ class CepeaETL:
 
         # 2. Bolsas Internacionais e Praças Regionais (Notícias Agrícolas)
         try:
-            r = requests.get("https://www.noticiasagricolas.com.br/cotacoes/", headers=headers, timeout=15)
+            r = scraper.get("https://www.noticiasagricolas.com.br/cotacoes/", timeout=20)
             soup = BeautifulSoup(r.text, 'html.parser')
             
             current_title = ""
