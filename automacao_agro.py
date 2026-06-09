@@ -629,52 +629,70 @@ class CepeaETL:
 
         # 2. Bolsas Internacionais e Praças Regionais (Notícias Agrícolas)
         try:
-            r = scraper.get("https://www.noticiasagricolas.com.br/cotacoes/", timeout=20)
+            r = scraper.get("https://www.noticiasagricolas.com.br/cotacoes/", timeout=30)
             soup = BeautifulSoup(r.text, 'html.parser')
             
-            current_title = ""
-            for tag in soup.find_all(['h1', 'h2', 'h3', 'table', 'div']):
-                if tag.name in ['h1', 'h2', 'h3']:
-                    current_title = tag.text.lower()
-                elif tag.name == 'div' and tag.get('class') and 'titulo' in tag.get('class'):
-                    current_title = tag.text.lower()
-                elif tag.name == 'table':
-                    thead = tag.find('thead')
-                    if thead: current_title = thead.text.lower()
+            for table in soup.find_all('table'):
+                # 1. Tenta pegar o título dentro do thead da própria tabela
+                thead = table.find('thead')
+                table_title = thead.text.lower().strip() if thead else ""
+                
+                # 2. Se a tabela não tiver thead, pega o h2/h3 anterior mais próximo
+                if not table_title or len(table_title) < 3:
+                    prev_title = table.find_previous(['h1', 'h2', 'h3'])
+                    table_title = prev_title.text.lower().strip() if prev_title else ""
                     
-                    for tr in tag.find_all('tr'):
-                        tds = tr.find_all('td')
-                        if len(tds) >= 2:
-                            row = tds[0].text.lower()
-                            val = tds[1].text.strip()
-                            
-                            if 'soja' in current_title or 'soja' in row:
-                                if 'cbot' in row or 'chicago' in row: self.precos['soja_cbot'] = f"US$ {val}"
-                                elif 'prêmio' in row: self.precos['soja_premio'] = f"US$ {val}"
-                                elif 'rio verde' in row: self.precos['soja_go'] = f"R$ {val}"
-                                elif 'rondonópolis' in row: self.precos['soja_mt'] = f"R$ {val}"
-                            
-                            if 'milho' in current_title or 'milho' in row:
-                                if 'cbot' in row or 'chicago' in row: self.precos['milho_cbot'] = f"US$ {val}"
-                                elif 'cascavel' in row: self.precos['milho_pr'] = f"R$ {val}"
-                                elif 'sorriso' in row: self.precos['milho_mt'] = f"R$ {val}"
-                            
-                            if 'café' in current_title or 'cafe' in current_title or 'café' in row:
-                                if 'ny' in row or 'nova york' in row: self.precos['cafe_ny'] = f"US$ {val}"
-                                elif 'londres' in row: self.precos['cafe_lon'] = f"US$ {val}"
+                for tr in table.find_all('tr'):
+                    tds = tr.find_all('td')
+                    if len(tds) >= 2:
+                        row_name = tds[0].text.strip().lower()
+                        val = tds[1].text.strip()
+                        
+                        if not val or val == '-': continue
+                        
+                        contexto = f"{table_title} {row_name}"
+                        
+                        if 'soja' in contexto:
+                            if ('cbot' in contexto or 'chicago' in contexto) and 'soja_cbot' not in self.precos:
+                                self.precos['soja_cbot'] = f"US$ {val}"
+                            elif 'prêmio' in contexto and 'soja_premio' not in self.precos:
+                                self.precos['soja_premio'] = f"US$ {val}"
+                            elif 'rio verde' in contexto and 'soja_go' not in self.precos:
+                                self.precos['soja_go'] = f"R$ {val}"
+                            elif 'rondonópolis' in contexto and 'soja_mt' not in self.precos:
+                                self.precos['soja_mt'] = f"R$ {val}"
                                 
-                            if 'algodão' in current_title or 'algodao' in current_title or 'algodão' in row:
-                                if 'ny' in row or 'nova york' in row or 'ice' in row: self.precos['algodao_ny'] = f"US$ {val}"
+                        if 'milho' in contexto:
+                            if ('cbot' in contexto or 'chicago' in contexto) and 'milho_cbot' not in self.precos:
+                                self.precos['milho_cbot'] = f"US$ {val}"
+                            elif 'cascavel' in contexto and 'milho_pr' not in self.precos:
+                                self.precos['milho_pr'] = f"R$ {val}"
+                            elif 'sorriso' in contexto and 'milho_mt' not in self.precos:
+                                self.precos['milho_mt'] = f"R$ {val}"
                                 
-                            if 'boi' in current_title or 'boi' in row:
-                                if 'goiânia' in row: self.precos['boi_go'] = f"R$ {val}"
-                                elif 'cuiabá' in row: self.precos['boi_mt'] = f"R$ {val}"
+                        if 'café' in contexto or 'cafe' in contexto:
+                            if ('ny' in contexto or 'nova york' in contexto) and 'cafe_ny' not in self.precos:
+                                self.precos['cafe_ny'] = f"US$ {val}"
+                            elif 'londres' in contexto and 'cafe_lon' not in self.precos:
+                                self.precos['cafe_lon'] = f"US$ {val}"
                                 
-                            if 'trigo' in current_title or 'trigo' in row:
-                                if 'cbot' in row or 'chicago' in row: self.precos['trigo_cbot'] = f"US$ {val}"
+                        if 'algodão' in contexto or 'algodao' in contexto:
+                            if ('ny' in contexto or 'nova york' in contexto or 'ice' in contexto) and 'algodao_ny' not in self.precos:
+                                self.precos['algodao_ny'] = f"US$ {val}"
                                 
-                            if 'laranja' in current_title or 'citrus' in current_title:
-                                if 'indústria' in row: self.precos['laranja_sp'] = f"R$ {val}"
+                        if 'boi' in contexto:
+                            if 'goiânia' in contexto and 'boi_go' not in self.precos:
+                                self.precos['boi_go'] = f"R$ {val}"
+                            elif 'cuiabá' in contexto and 'boi_mt' not in self.precos:
+                                self.precos['boi_mt'] = f"R$ {val}"
+                                
+                        if 'trigo' in contexto:
+                            if ('cbot' in contexto or 'chicago' in contexto) and 'trigo_cbot' not in self.precos:
+                                self.precos['trigo_cbot'] = f"US$ {val}"
+                                
+                        if 'laranja' in contexto or 'citrus' in contexto:
+                            if 'indústria' in contexto and 'laranja_sp' not in self.precos:
+                                self.precos['laranja_sp'] = f"R$ {val}"
 
         except Exception as e:
             logging.error(f"Erro ao ler Bolsas/Praças extra: {e}")
@@ -727,13 +745,15 @@ class CepeaETL:
         hist = self.historico.get(chave)
         if not hist:
             return f'''<div class="price-section" style="padding-top: 10px;">
-                        <div class="section-title">Evolução Histórica ({unidade})</div>
+                        <div class="section-title">Evolução Histórica - Internacional ({unidade})</div>
                         <div class="price-row"><span>Dados indisponíveis</span></div>
                        </div>'''
         
+        moeda = unidade.split('/')[0].strip() if '/' in unidade else unidade
+
         def fmt(val):
             if pd.isna(val) or val is None: return "-"
-            return f"{val:.2f}"
+            return f"{moeda} {val:.2f}"
 
         avg_23 = fmt(hist.get('avg_2023'))
         avg_24 = fmt(hist.get('avg_2024'))
@@ -764,7 +784,7 @@ class CepeaETL:
             m1_th, m2_th = "--/--", "--/--"
 
         return f'''<div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica ({unidade})</div>
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional ({unidade})</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -831,7 +851,7 @@ class CepeaETL:
                     /* Mini-tabela de Evolução Histórica */
                     .hist-table {{ width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 5px; }}
                     .hist-table th {{ background-color: #f1f5f9; color: var(--text-muted); padding: 6px 2px; text-align: center; font-weight: 700; font-size: 0.9em; border: 1px solid var(--border-light); }}
-                    .hist-table td {{ background-color: #fff; border: 1px solid var(--border-light); padding: 8px 2px; text-align: center; font-weight: 700; color: var(--text-main); }}
+                    .hist-table td {{ background-color: #fff; border: 1px solid var(--border-light); padding: 8px 1px; text-align: center; font-weight: 700; color: var(--text-main); white-space: nowrap; }}
                 </style>
             </head>
             <body>
@@ -864,7 +884,7 @@ class CepeaETL:
                                     <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('soja_cbot')} / bu</strong></div>
                                     <div class="price-row"><span>Prêmio de Exportação</span> <strong>{self.get_preco('soja_premio')} / c</strong></div>
                                 </div>
-                                {self.formatar_tendencia('soja', 'US$')}
+                                {self.formatar_tendencia('soja', 'US$ / bu')}
                             </div>
 
                             <!-- Milho -->
@@ -880,7 +900,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('milho_cbot')} / bu</strong></div>
                                 </div>
-                                {self.formatar_tendencia('milho', 'US$')}
+                                {self.formatar_tendencia('milho', 'US$ / bu')}
                             </div>
 
                             <!-- Café -->
@@ -896,7 +916,7 @@ class CepeaETL:
                                     <div class="price-row"><span>ICE (Arábica - NY)</span> <strong>{self.get_preco('cafe_ny')} / lb</strong></div>
                                     <div class="price-row"><span>ICE (Robusta - Londres)</span> <strong>{self.get_preco('cafe_lon')} / ton</strong></div>
                                 </div>
-                                {self.formatar_tendencia('cafe', 'US$')}
+                                {self.formatar_tendencia('cafe', 'US$ / lb')}
                             </div>
 
                             <!-- Algodão -->
@@ -911,7 +931,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>ICE (Nova York)</span> <strong>{self.get_preco('algodao_ny')} / lb</strong></div>
                                 </div>
-                                {self.formatar_tendencia('algodao', 'US$')}
+                                {self.formatar_tendencia('algodao', 'US$ / lb')}
                             </div>
 
                             <!-- Boi Gordo -->
@@ -927,7 +947,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>{self.get_preco('boi_cme', 'US$ --,--')} / lb</strong></div>
                                 </div>
-                                {self.formatar_tendencia('boi', 'US$')}
+                                {self.formatar_tendencia('boi', 'US$ / lb')}
                             </div>
 
                             <!-- Trigo & Aveia -->
@@ -942,7 +962,7 @@ class CepeaETL:
                                     <div class="section-title">Mercado Internacional (Média Mensal)</div>
                                     <div class="price-row"><span>CBOT (Trigo - EUA)</span> <strong>{self.get_preco('trigo_cbot')} / bu</strong></div>
                                 </div>
-                                {self.formatar_tendencia('trigo', 'US$')}
+                                {self.formatar_tendencia('trigo', 'US$ / bu')}
                             </div>
 
                             <!-- Frutas -->
