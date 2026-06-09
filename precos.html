@@ -1,0 +1,154 @@
+
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="utf-8">
+                <title>Painel Preços Agrícolas - CEPEA</title>
+                <style>
+                    :root { --agco-red: #BA0C2F; --text-main: #2c3e50; --bg-page: #f4f7f6; --bg-card: #ffffff; --header-bg: #1e293b; }
+                    body { background-color: var(--bg-page); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: var(--text-main); }
+                    .dashboard-container { background-color: var(--bg-card); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05); max-width: 1550px; margin: 0 auto; overflow: hidden; }
+                    .navbar { background-color: var(--text-main); padding: 0 30px; display: flex; align-items: center; border-bottom: 2px solid var(--agco-red); }
+                    .nav-link { color: #94a3b8; text-decoration: none; padding: 12px 20px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; border-bottom: 3px solid transparent; }
+                    .nav-link:hover { color: #ffffff; }
+                    .nav-link.active { color: #ffffff; border-bottom-color: var(--agco-red); }
+                    .header { padding: 30px; background-color: var(--header-bg); border-bottom: 4px solid var(--agco-red); }
+                    .header h2 { margin: 0 0 5px 0; font-size: 1.8em; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }
+                    .header p { color: #94a3b8; margin: 0; font-size: 1em; font-weight: 500; }
+                    .content-area { padding: 30px 40px; text-align: left; display: block; }
+                    
+                    /* Grid de Preços */
+                    .commodity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-top: 10px; width: 100%; }
+                    .commodity-card { background: #fff; border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+                    .commodity-header { background: var(--text-main); color: #fff; padding: 15px 20px; font-weight: 700; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--agco-red); }
+                    .price-section { padding: 15px 20px; border-bottom: 1px solid var(--border-light); background-color: #fafafa; }
+                    .price-section:last-child { border-bottom: none; background-color: #fff; }
+                    .section-title { font-size: 0.8em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 12px; letter-spacing: 0.5px; }
+                    .price-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95em; border-bottom: 1px dashed #e2e8f0; padding-bottom: 5px; }
+                    .price-row:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+                    .price-row span { color: #475569; }
+                    .price-row strong { color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }
+                </style>
+            </head>
+            <body>
+                <div class="dashboard-container">
+                    <div class="navbar">
+                        <a href="index.html" class="nav-link">Painel VBP (Renda)</a>
+                        <a href="precos.html" class="nav-link active">Painel de Preços (CEPEA)</a>
+                    </div>
+                    <div class="header">
+                        <h2>Painel de Preços Agrícolas</h2>
+                        <p>Acompanhamento de Cotações - Médias Mensais (CEPEA-ESALQ)</p>
+                    </div>
+                    <div class="content-area">
+                        <p style="color: #64748b; font-size: 1.05em; margin-top: 0; margin-bottom: 25px; border-left: 4px solid var(--agco-red); padding-left: 15px;">
+                            Estrutura preparada para receber integração com as <strong>Médias Mensais do Mercado Interno (CEPEA)</strong> e <strong>Mercado Internacional (Bolsas)</strong>.
+                        </p>
+                        
+                        <div class="commodity-grid">
+                            <!-- Soja -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🌱 Soja</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Paranaguá (PR)</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Rio Verde (GO)</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Rondonópolis (MT)</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>R$ --,-- / bu</strong></div>
+                                    <div class="price-row"><span>Prêmio de Exportação</span> <strong>R$ --,-- / c</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Milho -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🌽 Milho</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Campinas (SP)</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Cascavel (PR)</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Sorriso (MT)</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>R$ --,-- / bu</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Café -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>☕ Café</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Arábica - São Paulo</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Conilon - Espírito Santo</span> <strong>R$ --,-- / sc 60kg</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>ICE (Arábica - NY)</span> <strong>R$ --,-- / lb</strong></div>
+                                    <div class="price-row"><span>ICE (Robusta - Londres)</span> <strong>R$ --,-- / ton</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Algodão -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>☁️ Algodão</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Mato Grosso (MT)</span> <strong>R$ --,-- / lp</strong></div>
+                                    <div class="price-row"><span>Bahia (BA)</span> <strong>R$ --,-- / lp</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>R$ --,-- / lb</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Boi Gordo -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🐂 Boi Gordo</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>São Paulo (SP)</span> <strong>R$ --,-- / @</strong></div>
+                                    <div class="price-row"><span>Campo Grande (GO)</span> <strong>R$ --,-- / @</strong></div>
+                                    <div class="price-row"><span>Cuiabá (MT)</span> <strong>R$ --,-- / @</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>US$ --,-- / lb</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Trigo & Aveia -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🌾 Trigo & Aveia</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Trigo - Paraná (PR)</span> <strong>R$ --,-- / ton</strong></div>
+                                    <div class="price-row"><span>Aveia - Rio G. do Sul (RS)</span> <strong>R$ --,-- / ton</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CBOT (Trigo - EUA)</span> <strong>R$ --,-- / bu</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Frutas -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🍊 Frutas (Destaques)</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal - Atacado)</div>
+                                    <div class="price-row"><span>Laranja (Indústria - SP)</span> <strong>R$ --,-- / cx 40.8kg</strong></div>
+                                    <div class="price-row"><span>Banana (Nanica - SP)</span> <strong>R$ --,-- / cx 22kg</strong></div>
+                                    <div class="price-row"><span>Maçã (Fuji - SC)</span> <strong>R$ --,-- / cx 18kg</strong></div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            
