@@ -458,6 +458,12 @@ class AgroETL:
                     .title-area p {{ color: #94a3b8; margin: 0; font-size: 1em; font-weight: 500; }}
                     .developer-info {{ text-align: right; color: #94a3b8; font-size: 0.9em; line-height: 1.4; }}
                     .developer-info strong {{ color: #ffffff; font-size: 1.15em; display: block; margin-top: 4px; font-weight: 600; }}
+                    
+                    /* Menu de Navegação */
+                    .navbar {{ background-color: var(--text-main); padding: 0 30px; display: flex; align-items: center; border-bottom: 2px solid var(--agco-red); }}
+                    .nav-link {{ color: #94a3b8; text-decoration: none; padding: 12px 20px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; border-bottom: 3px solid transparent; }}
+                    .nav-link:hover {{ color: #ffffff; }}
+                    .nav-link.active {{ color: #ffffff; border-bottom-color: var(--agco-red); }}
                     .btn-lang {{ background: #ffffff; border: 1px solid var(--border-light); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; color: var(--text-main); margin-left: 5px; transition: 0.2s; }}
                     .btn-lang:hover {{ background: #e9ecef; }}
                     .content-area {{ padding: 20px 30px 30px 30px; }}
@@ -496,10 +502,14 @@ class AgroETL:
             <body>
                 <div id="google_translate_element" style="display:none;"></div>
                 <div class="dashboard-container">
+                    <div class="navbar">
+                        <a href="index.html" class="nav-link active">Painel VBP (Renda)</a>
+                        <a href="precos.html" class="nav-link">Painel de Preços (CEPEA)</a>
+                    </div>
                     <div class="header">
                         <div class="title-area">
                             <h2>Painel renda agrícola</h2>
-                            <p>Valor Bruto da Produção Nacional</p>
+                            <p>Valor Bruto da Produção Nacional (em R$ Bilhões)</p>
                         </div>
                         <div class="developer-info">
                             Desenvolvido por<br>
@@ -575,7 +585,259 @@ class AgroETL:
         return caminho_html
 
 # ==========================================
-# 4. EXECUÇÃO PRINCIPAL
+# 4. MÓDULO CEPEA (PREÇOS) - ESTRUTURA INICIAL
+# ==========================================
+class CepeaETL:
+    def __init__(self, dir_relatorios: str):
+        self.dir_relatorios = dir_relatorios
+        os.makedirs(self.dir_relatorios, exist_ok=True)
+        self.precos = {}
+
+    def extrair_cotacoes_reais(self):
+        logging.info("--- COLETANDO COTAÇÕES REAIS (CEPEA E BOLSAS) ---")
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        
+        # 1. Indicadores Oficiais CEPEA (Mercado Interno Base)
+        try:
+            r = requests.get("https://www.cepea.esalq.usp.br/br/widget.aspx", headers=headers, timeout=15)
+            soup = BeautifulSoup(r.text, 'html.parser')
+            for tr in soup.find_all('tr'):
+                th = tr.find('th')
+                tds = tr.find_all('td')
+                if th and tds:
+                    nome = th.text.strip().lower()
+                    val = tds[0].text.strip()
+                    if not val: continue
+                    
+                    if 'soja' in nome: self.precos['soja_pr'] = f"R$ {val}"
+                    elif 'milho' in nome: self.precos['milho_sp'] = f"R$ {val}"
+                    elif 'boi' in nome and 'bezerro' not in nome: self.precos['boi_sp'] = f"R$ {val}"
+                    elif 'arábica' in nome: self.precos['cafe_sp'] = f"R$ {val}"
+                    elif 'conilon' in nome: self.precos['cafe_es'] = f"R$ {val}"
+                    elif 'algodão' in nome: 
+                        self.precos['algodao_mt'] = f"R$ {val}"
+                        self.precos['algodao_ba'] = f"R$ {val}"
+                    elif 'trigo' in nome: self.precos['trigo_pr'] = f"R$ {val}"
+        except Exception as e:
+            logging.error(f"Erro ao acessar CEPEA: {e}")
+
+        # 2. Bolsas Internacionais e Praças Regionais (Notícias Agrícolas)
+        try:
+            r = requests.get("https://www.noticiasagricolas.com.br/cotacoes/", headers=headers, timeout=15)
+            soup = BeautifulSoup(r.text, 'html.parser')
+            
+            def buscar_na_tabela(nome_tabela, nome_linha, simbolo="R$"):
+                for table in soup.find_all('table', class_='cotacao'):
+                    thead = table.find('thead')
+                    if thead and nome_tabela.lower() in thead.text.lower():
+                        for tr in table.find_all('tr'):
+                            tds = tr.find_all('td')
+                            if len(tds) >= 2 and nome_linha.lower() in tds[0].text.lower():
+                                return f"{simbolo} {tds[1].text.strip()}"
+                return None
+
+            def buscar_primeira_linha(nome_tabela, simbolo="R$"):
+                for table in soup.find_all('table', class_='cotacao'):
+                    thead = table.find('thead')
+                    if thead and nome_tabela.lower() in thead.text.lower():
+                        tbody = table.find('tbody')
+                        if tbody:
+                            tr = tbody.find('tr')
+                            if tr:
+                                tds = tr.find_all('td')
+                                if len(tds) >= 2:
+                                    return f"{simbolo} {tds[1].text.strip()}"
+                return None
+
+            # Bolsas Internacionais (Chicago / NY / Londres)
+            if v := buscar_primeira_linha('soja - cbot', 'US$'): self.precos['soja_cbot'] = v
+            if v := buscar_primeira_linha('soja - prêmios', 'US$'): self.precos['soja_premio'] = v
+            if v := buscar_primeira_linha('milho - cbot', 'US$'): self.precos['milho_cbot'] = v
+            if v := buscar_primeira_linha('café - ny', 'US$'): self.precos['cafe_ny'] = v
+            if v := buscar_primeira_linha('café - londres', 'US$'): self.precos['cafe_lon'] = v
+            if v := buscar_primeira_linha('algodão - ny', 'US$'): self.precos['algodao_ny'] = v
+            if v := buscar_primeira_linha('trigo - cbot', 'US$'): self.precos['trigo_cbot'] = v
+
+            # Praças Regionais Mercado Físico
+            if v := buscar_na_tabela('soja - mercado', 'rio verde'): self.precos['soja_go'] = v
+            if v := buscar_na_tabela('soja - mercado', 'rondonópolis'): self.precos['soja_mt'] = v
+            if v := buscar_na_tabela('milho - mercado', 'cascavel'): self.precos['milho_pr'] = v
+            if v := buscar_na_tabela('milho - mercado', 'sorriso'): self.precos['milho_mt'] = v
+            if v := buscar_na_tabela('boi gordo - mercado', 'goiânia'): self.precos['boi_go'] = v
+            if v := buscar_na_tabela('boi gordo - mercado', 'cuiabá'): self.precos['boi_mt'] = v
+            if v := buscar_na_tabela('laranja - mercado', 'indústria'): self.precos['laranja_sp'] = v
+
+        except Exception as e:
+            logging.error(f"Erro ao ler Bolsas/Praças extra: {e}")
+
+    def get_preco(self, chave, default="R$ --,--"):
+        return self.precos.get(chave, default)
+
+    def gerar_relatorio_precos(self):
+        logging.info("--- GERANDO PÁGINA DE PREÇOS (CEPEA) ---")
+        self.extrair_cotacoes_reais()
+        caminho_html = os.path.join(self.dir_relatorios, 'precos.html')
+        
+        with open(caminho_html, 'w', encoding='utf-8') as f:
+            f.write(f'''
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="utf-8">
+                <title>Painel Preços Agrícolas - CEPEA</title>
+                <style>
+                    :root {{ --agco-red: #BA0C2F; --text-main: #2c3e50; --bg-page: #f4f7f6; --bg-card: #ffffff; --header-bg: #1e293b; }}
+                    body {{ background-color: var(--bg-page); font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; color: var(--text-main); }}
+                    .dashboard-container {{ background-color: var(--bg-card); border-radius: 12px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.05); max-width: 1550px; margin: 0 auto; overflow: hidden; }}
+                    .navbar {{ background-color: var(--text-main); padding: 0 30px; display: flex; align-items: center; border-bottom: 2px solid var(--agco-red); }}
+                    .nav-link {{ color: #94a3b8; text-decoration: none; padding: 12px 20px; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; transition: 0.2s; border-bottom: 3px solid transparent; }}
+                    .nav-link:hover {{ color: #ffffff; }}
+                    .nav-link.active {{ color: #ffffff; border-bottom-color: var(--agco-red); }}
+                    .header {{ padding: 30px; background-color: var(--header-bg); border-bottom: 4px solid var(--agco-red); }}
+                    .header h2 {{ margin: 0 0 5px 0; font-size: 1.8em; font-weight: 800; color: #ffffff; letter-spacing: -0.5px; }}
+                    .header p {{ color: #94a3b8; margin: 0; font-size: 1em; font-weight: 500; }}
+                    .content-area {{ padding: 30px 40px; text-align: left; display: block; }}
+                    
+                    /* Grid de Preços */
+                    .commodity-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 25px; margin-top: 10px; width: 100%; }}
+                    .commodity-card {{ background: #fff; border: 1px solid var(--border-light); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }}
+                    .commodity-header {{ background: var(--text-main); color: #fff; padding: 15px 20px; font-weight: 700; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid var(--agco-red); }}
+                    .price-section {{ padding: 15px 20px; border-bottom: 1px solid var(--border-light); background-color: #fafafa; }}
+                    .price-section:last-child {{ border-bottom: none; background-color: #fff; }}
+                    .section-title {{ font-size: 0.8em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-bottom: 12px; letter-spacing: 0.5px; }}
+                    .price-row {{ display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.95em; border-bottom: 1px dashed #e2e8f0; padding-bottom: 5px; }}
+                    .price-row:last-child {{ margin-bottom: 0; border-bottom: none; padding-bottom: 0; }}
+                    .price-row span {{ color: #475569; }}
+                    .price-row strong {{ color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }}
+                </style>
+            </head>
+            <body>
+                <div class="dashboard-container">
+                    <div class="navbar">
+                        <a href="index.html" class="nav-link">Painel VBP (Renda)</a>
+                        <a href="precos.html" class="nav-link active">Painel de Preços (CEPEA)</a>
+                    </div>
+                    <div class="header">
+                        <h2>Painel de Preços Agrícolas</h2>
+                        <p>Acompanhamento de Cotações - Médias Mensais (CEPEA-ESALQ)</p>
+                    </div>
+                    <div class="content-area">
+                        <p style="color: #64748b; font-size: 1.05em; margin-top: 0; margin-bottom: 25px; border-left: 4px solid var(--agco-red); padding-left: 15px;">
+                            Estrutura preparada para receber integração com as <strong>Médias Mensais do Mercado Interno (CEPEA)</strong> e <strong>Mercado Internacional (Bolsas)</strong>.
+                        </p>
+                        
+                        <div class="commodity-grid">
+                            <!-- Soja -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🌱 Soja</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Paranaguá (PR)</span> <strong>{self.get_preco('soja_pr')} / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Rio Verde (GO)</span> <strong>{self.get_preco('soja_go')} / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Rondonópolis (MT)</span> <strong>{self.get_preco('soja_mt')} / sc 60kg</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('soja_cbot')} / bu</strong></div>
+                                    <div class="price-row"><span>Prêmio de Exportação</span> <strong>{self.get_preco('soja_premio')} / c</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Milho -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🌽 Milho</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Campinas (SP)</span> <strong>{self.get_preco('milho_sp')} / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Cascavel (PR)</span> <strong>{self.get_preco('milho_pr')} / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Sorriso (MT)</span> <strong>{self.get_preco('milho_mt')} / sc 60kg</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('milho_cbot')} / bu</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Café -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>☕ Café</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Arábica - São Paulo</span> <strong>{self.get_preco('cafe_sp')} / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Conilon - Espírito Santo</span> <strong>{self.get_preco('cafe_es')} / sc 60kg</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>ICE (Arábica - NY)</span> <strong>{self.get_preco('cafe_ny')} / lb</strong></div>
+                                    <div class="price-row"><span>ICE (Robusta - Londres)</span> <strong>{self.get_preco('cafe_lon')} / ton</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Algodão -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>☁️ Algodão</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Mato Grosso (MT)</span> <strong>{self.get_preco('algodao_mt')} / lp</strong></div>
+                                    <div class="price-row"><span>Bahia (BA)</span> <strong>{self.get_preco('algodao_ba')} / lp</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>{self.get_preco('algodao_ny')} / lb</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Boi Gordo -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🐂 Boi Gordo</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>São Paulo (SP)</span> <strong>{self.get_preco('boi_sp')} / @</strong></div>
+                                    <div class="price-row"><span>Campo Grande (GO)</span> <strong>{self.get_preco('boi_go')} / @</strong></div>
+                                    <div class="price-row"><span>Cuiabá (MT)</span> <strong>{self.get_preco('boi_mt')} / @</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>{self.get_preco('boi_cme', 'US$ --,--')} / lb</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Trigo & Aveia -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🌾 Trigo & Aveia</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
+                                    <div class="price-row"><span>Trigo - Paraná (PR)</span> <strong>{self.get_preco('trigo_pr')} / ton</strong></div>
+                                    <div class="price-row"><span>Aveia - Rio G. do Sul (RS)</span> <strong>{self.get_preco('aveia_rs')} / ton</strong></div>
+                                </div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
+                                    <div class="price-row"><span>CBOT (Trigo - EUA)</span> <strong>{self.get_preco('trigo_cbot')} / bu</strong></div>
+                                </div>
+                            </div>
+
+                            <!-- Frutas -->
+                            <div class="commodity-card">
+                                <div class="commodity-header"><span>🍊 Frutas (Destaques)</span></div>
+                                <div class="price-section">
+                                    <div class="section-title">Mercado Interno (Média Mensal - Atacado)</div>
+                                    <div class="price-row"><span>Laranja (Indústria - SP)</span> <strong>{self.get_preco('laranja_sp')} / cx 40.8kg</strong></div>
+                                    <div class="price-row"><span>Banana (Nanica - SP)</span> <strong>{self.get_preco('banana_sp')} / cx 22kg</strong></div>
+                                    <div class="price-row"><span>Maçã (Fuji - SC)</span> <strong>{self.get_preco('maca_sc')} / cx 18kg</strong></div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            ''')
+        logging.info(f"Sucesso! Relatório de preços gerado em: {{os.path.abspath(caminho_html)}}")
+        return caminho_html
+
+# ==========================================
+# 5. EXECUÇÃO PRINCIPAL
 # ==========================================
 if __name__ == "__main__":
     print(f"\n{'='*60}\nATENÇÃO: Os arquivos e pastas estão sendo criados EXATAMENTE aqui:\n-> {BASE_DIR} <-\n{'='*60}\n")
@@ -601,3 +863,7 @@ if __name__ == "__main__":
         
         if etl.cruzar_e_salvar_versao():
             etl.gerar_relatorio_html()
+
+    # Gera a aba de preços
+    cepea = CepeaETL(PASTAS["rel"])
+    cepea.gerar_relatorio_precos()
