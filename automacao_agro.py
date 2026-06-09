@@ -607,11 +607,10 @@ class CepeaETL:
             r = scraper.get("https://www.cepea.esalq.usp.br/br/widget.aspx", timeout=15)
             soup = BeautifulSoup(r.text, 'html.parser')
             for tr in soup.find_all('tr'):
-                th = tr.find('th')
-                tds = tr.find_all('td')
-                if th and tds:
-                    nome = th.text.strip().lower()
-                    val = tds[0].text.strip()
+                tds = tr.find_all(['th', 'td'])
+                if len(tds) >= 2:
+                    nome = tds[0].text.strip().lower()
+                    val = tds[1].text.strip()
                     if not val: continue
                     
                     if 'soja' in nome: self.precos['soja_br'] = f"R$ {val}"
@@ -674,10 +673,7 @@ class CepeaETL:
     def formatar_tendencia(self, chave, unidade="US$"):
         hist = self.historico.get(chave)
         if not hist:
-            return f'''<div class="price-section" style="padding-top: 10px;">
-                        <div class="section-title">Evolução Histórica - Internacional ({unidade})</div>
-                        <div class="price-row"><span>Dados indisponíveis</span></div>
-                       </div>'''
+            return f'''<div class="price-row" style="margin-top: 15px;"><span>Evolução Histórica</span> <strong>Dados indisponíveis</strong></div>'''
         
         moeda = unidade.split('/')[0].strip() if '/' in unidade else unidade
 
@@ -697,7 +693,7 @@ class CepeaETL:
             var = ((m2_val - m1_val) / m1_val) * 100 if m1_val else 0
             cor = "var(--positive)" if var > 0 else "var(--negative)"
             sinal = "+" if var > 0 else ""
-            var_str = f'<span style="color: {cor};">{sinal}{var:.1f}%</span>'
+            var_str = f'<span style="color: {cor}; background: {"rgba(16,124,65,0.1)" if var > 0 else "rgba(216,59,1,0.1)"}; padding: 3px 6px; border-radius: 4px;">{sinal}{var:.1f}%</span>'
             m1_str = fmt(m1_val)
             m2_str = fmt(m2_val)
             m1_th = m1_name
@@ -713,8 +709,8 @@ class CepeaETL:
             m1_str, m2_str, var_str = "-", "-", "-"
             m1_th, m2_th = "--/--", "--/--"
 
-        return f'''<div class="price-section" style="padding-top: 15px;">
-                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica - Internacional ({unidade})</div>
+        return f'''
+                    <div style="font-size: 0.75em; text-transform: uppercase; color: var(--text-muted); font-weight: 800; margin-top: 18px; margin-bottom: 8px; letter-spacing: 0.5px;">Evolução Histórica ({unidade})</div>
                     <table class="hist-table">
                         <thead>
                             <tr>
@@ -731,13 +727,13 @@ class CepeaETL:
                                 <td>{avg_23}</td>
                                 <td>{avg_24}</td>
                                 <td>{avg_25}</td>
-                                <td>{m1_str}</td>
-                                <td>{m2_str}</td>
-                                <td>{var_str}</td>
+                                <td style="background-color: #f8f9fa; border-radius: 4px 0 0 4px;">{m1_str}</td>
+                                <td style="background-color: #f8f9fa;">{m2_str}</td>
+                                <td style="background-color: #f8f9fa; border-radius: 0 4px 4px 0;">{var_str}</td>
                             </tr>
                         </tbody>
                     </table>
-                   </div>'''
+                '''
 
     def gerar_relatorio_precos(self):
         logging.info("--- GERANDO PÁGINA DE PREÇOS (CEPEA) ---")
@@ -779,9 +775,10 @@ class CepeaETL:
                     .price-row strong {{ color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }}
                     
                     /* Mini-tabela de Evolução Histórica */
-                    .hist-table {{ width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 5px; }}
-                    .hist-table th {{ background-color: #f1f5f9; color: var(--text-muted); padding: 6px 2px; text-align: center; font-weight: 700; font-size: 0.9em; border: 1px solid var(--border-light); }}
-                    .hist-table td {{ background-color: #fff; border: 1px solid var(--border-light); padding: 8px 1px; text-align: center; font-weight: 700; color: var(--text-main); white-space: nowrap; }}
+                    .hist-table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 5px; }}
+                    .hist-table th {{ background-color: #f8f9fa; color: var(--text-muted); padding: 8px 2px; text-align: center; font-weight: 700; font-size: 0.85em; border-bottom: 2px solid var(--border-light); }}
+                    .hist-table td {{ padding: 10px 2px; text-align: center; font-weight: 700; color: var(--text-main); border-bottom: 1px solid var(--border-light); white-space: nowrap; }}
+                    .hist-table tr:last-child td {{ border-bottom: none; }}
                 </style>
             </head>
             <body>
@@ -809,9 +806,9 @@ class CepeaETL:
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ {self.get_preco('soja_int', '--,--')} / bu</strong></div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('soja_int', '--,--')} / bu</strong></div>
+                                    {self.formatar_tendencia('soja', 'US$ / bu')}
                                 </div>
-                                {self.formatar_tendencia('soja', 'US$ / bu')}
                             </div>
 
                             <!-- Milho -->
@@ -823,9 +820,9 @@ class CepeaETL:
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ {self.get_preco('milho_int', '--,--')} / bu</strong></div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('milho_int', '--,--')} / bu</strong></div>
+                                    {self.formatar_tendencia('milho', 'US$ / bu')}
                                 </div>
-                                {self.formatar_tendencia('milho', 'US$ / bu')}
                             </div>
 
                             <!-- Café -->
@@ -838,9 +835,9 @@ class CepeaETL:
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>US$ {self.get_preco('cafe_int', '--,--')} / lb</strong></div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('cafe_int', '--,--')} / lb</strong></div>
+                                    {self.formatar_tendencia('cafe', 'US$ / lb')}
                                 </div>
-                                {self.formatar_tendencia('cafe', 'US$ / lb')}
                             </div>
 
                             <!-- Algodão -->
@@ -852,9 +849,9 @@ class CepeaETL:
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>US$ {self.get_preco('algodao_int', '--,--')} / lb</strong></div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('algodao_int', '--,--')} / lb</strong></div>
+                                    {self.formatar_tendencia('algodao', 'US$ / lb')}
                                 </div>
-                                {self.formatar_tendencia('algodao', 'US$ / lb')}
                             </div>
 
                             <!-- Boi Gordo -->
@@ -866,9 +863,9 @@ class CepeaETL:
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>US$ {self.get_preco('boi_int', '--,--')} / lb</strong></div>
+                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('boi_int', '--,--')} / lb</strong></div>
+                                    {self.formatar_tendencia('boi', 'US$ / lb')}
                                 </div>
-                                {self.formatar_tendencia('boi', 'US$ / lb')}
                             </div>
 
                             <!-- Trigo -->
@@ -880,9 +877,9 @@ class CepeaETL:
                                 </div>
                                 <div class="price-section">
                                     <div class="section-title">Mercado Internacional (Bolsa)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ {self.get_preco('trigo_int', '--,--')} / bu</strong></div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong style="font-size: 1.1em;">US$ {self.get_preco('trigo_int', '--,--')} / bu</strong></div>
+                                    {self.formatar_tendencia('trigo', 'US$ / bu')}
                                 </div>
-                                {self.formatar_tendencia('trigo', 'US$ / bu')}
                             </div>
                             
                         </div>
