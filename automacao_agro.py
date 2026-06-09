@@ -597,7 +597,11 @@ class CepeaETL:
 
     def extrair_cotacoes_reais(self):
         logging.info("--- COLETANDO COTAÇÕES REAIS (CEPEA E BOLSAS) ---")
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+        }
         
         # 1. Indicadores Oficiais CEPEA (Mercado Interno Base)
         try:
@@ -679,7 +683,11 @@ class CepeaETL:
         logging.info("--- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---")
         period1 = 1672531200 # 01/01/2023 Timestamp
         period2 = int(datetime.now().timestamp())
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json, text/plain, */*',
+            'Origin': 'https://finance.yahoo.com'
+        }
         
         tickers = {
             'soja': 'ZS=F', 'milho': 'ZC=F', 'cafe': 'KC=F', 
@@ -769,6 +777,11 @@ class CepeaETL:
                     .price-row:last-child {{ margin-bottom: 0; border-bottom: none; padding-bottom: 0; }}
                     .price-row span {{ color: #475569; }}
                     .price-row strong {{ color: var(--text-main); font-weight: 700; font-variant-numeric: tabular-nums; }}
+                    
+                    /* Mini-tabela de Evolução Histórica */
+                    .hist-table {{ width: 100%; border-collapse: collapse; font-size: 0.85em; margin-top: 5px; }}
+                    .hist-table th {{ background-color: #f1f5f9; color: var(--text-muted); padding: 6px 2px; text-align: center; font-weight: 700; font-size: 0.9em; border: 1px solid var(--border-light); }}
+                    .hist-table td {{ background-color: #fff; border: 1px solid var(--border-light); padding: 8px 2px; text-align: center; font-weight: 700; color: var(--text-main); }}
                 </style>
             </head>
             <body>
@@ -899,7 +912,7 @@ class CepeaETL:
             </body>
             </html>
             ''')
-        logging.info(f"Sucesso! Relatório de preços gerado em: {{os.path.abspath(caminho_html)}}")
+        logging.info(f"Sucesso! Relatório de preços gerado em: {os.path.abspath(caminho_html)}")
         return caminho_html
 
 # ==========================================
