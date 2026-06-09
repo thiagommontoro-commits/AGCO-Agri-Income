@@ -700,20 +700,30 @@ class CepeaETL:
                 res = requests.get(url, headers=headers, timeout=15)
                 if res.status_code == 200:
                     data = res.json()['chart']['result'][0]
+                    timestamps = data['timestamp']
                     closes = data['indicators']['quote'][0]['close']
-                    valid_closes = [c for c in closes if c is not None]
                     
-                    if valid_closes:
-                        preco_2023 = valid_closes[0]
-                        preco_atual = valid_closes[-1]
-                        variacao = ((preco_atual - preco_2023) / preco_2023) * 100
-                        self.historico[name] = {
-                            'preco_2023': f"{preco_2023:.2f}",
-                            'preco_atual': f"{preco_atual:.2f}",
-                            'variacao': variacao
-                        }
-                    else:
-                        self.historico[name] = None
+                    df_hist = pd.DataFrame({'ts': timestamps, 'close': closes})
+                    df_hist['date'] = pd.to_datetime(df_hist['ts'], unit='s')
+                    df_hist = df_hist.dropna(subset=['close'])
+                    df_hist['year'] = df_hist['date'].dt.year
+                    df_hist['month'] = df_hist['date'].dt.month
+                    
+                    avg_23 = df_hist[df_hist['year'] == 2023]['close'].mean()
+                    avg_24 = df_hist[df_hist['year'] == 2024]['close'].mean()
+                    avg_25 = df_hist[df_hist['year'] == 2025]['close'].mean()
+                    
+                    max_year = df_hist['year'].max()
+                    df_curr = df_hist[df_hist['year'] == max_year].sort_values('date')
+                    meses_curr = [(f"{int(row['month']):02d}", row['close']) for _, row in df_curr.iterrows()]
+                    
+                    self.historico[name] = {
+                        'avg_2023': avg_23 if not pd.isna(avg_23) else None,
+                        'avg_2024': avg_24 if not pd.isna(avg_24) else None,
+                        'avg_2025': avg_25 if not pd.isna(avg_25) else None,
+                        'max_year': max_year,
+                        'meses_atual': meses_curr
+                    }
                 else:
                     self.historico[name] = None
             except Exception as e:
@@ -723,20 +733,68 @@ class CepeaETL:
     def formatar_tendencia(self, chave, unidade="US$"):
         hist = self.historico.get(chave)
         if not hist:
-            return f'''<div class="price-section">
-                        <div class="section-title">Horizonte Global (Desde Jan/2023)</div>
-                        <div class="price-row"><span>Dados indisponíveis</span> <strong>--</strong></div>
+            return f'''<div class="price-section" style="padding-top: 10px;">
+                        <div class="section-title">Evolução Histórica ({unidade})</div>
+                        <div class="price-row"><span>Dados indisponíveis</span></div>
                        </div>'''
         
-        var = hist['variacao']
-        cor = "var(--positive)" if var > 0 else "var(--negative)"
-        sinal = "+" if var > 0 else ""
+        def fmt(val):
+            if pd.isna(val) or val is None: return "-"
+            return f"{val:.2f}"
+
+        avg_23 = fmt(hist.get('avg_2023'))
+        avg_24 = fmt(hist.get('avg_2024'))
+        avg_25 = fmt(hist.get('avg_2025'))
         
-        return f'''<div class="price-section">
-                    <div class="section-title">Horizonte Global (Desde Jan/2023)</div>
-                    <div class="price-row"><span>Preço Jan/2023</span> <strong>{unidade} {hist['preco_2023']}</strong></div>
-                    <div class="price-row"><span>Preço Atual</span> <strong>{unidade} {hist['preco_atual']}</strong></div>
-                    <div class="price-row"><span>Evolução no Período</span> <strong style="color: {cor};">{sinal}{var:.1f}%</strong></div>
+        meses = hist.get('meses_atual', [])
+        max_y = hist.get('max_year', 2026)
+
+        if len(meses) >= 2:
+            m1_name, m1_val = meses[-2]
+            m2_name, m2_val = meses[-1]
+            var = ((m2_val - m1_val) / m1_val) * 100 if m1_val else 0
+            cor = "var(--positive)" if var > 0 else "var(--negative)"
+            sinal = "+" if var > 0 else ""
+            var_str = f'<span style="color: {cor};">{sinal}{var:.1f}%</span>'
+            m1_str = fmt(m1_val)
+            m2_str = fmt(m2_val)
+            m1_th = f"{max_y}/{m1_name}"
+            m2_th = f"{max_y}/{m2_name}"
+        elif len(meses) == 1:
+            m2_name, m2_val = meses[-1]
+            var_str = "-"
+            m1_str = "-"
+            m2_str = fmt(m2_val)
+            m1_th = f"{max_y}/--"
+            m2_th = f"{max_y}/{m2_name}"
+        else:
+            m1_str, m2_str, var_str = "-", "-", "-"
+            m1_th, m2_th = f"{max_y}/01", f"{max_y}/02"
+
+        return f'''<div class="price-section" style="padding-top: 15px;">
+                    <div class="section-title" style="margin-bottom: 8px;">Evolução Histórica ({unidade})</div>
+                    <table class="hist-table">
+                        <thead>
+                            <tr>
+                                <th>Média 23</th>
+                                <th>Média 24</th>
+                                <th>Média 25</th>
+                                <th>{m1_th}</th>
+                                <th>{m2_th}</th>
+                                <th>Var. Mês</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{avg_23}</td>
+                                <td>{avg_24}</td>
+                                <td>{avg_25}</td>
+                                <td>{m1_str}</td>
+                                <td>{m2_str}</td>
+                                <td>{var_str}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                    </div>'''
 
     def gerar_relatorio_precos(self):
