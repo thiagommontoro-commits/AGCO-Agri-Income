@@ -598,12 +598,11 @@ class CepeaETL:
         self.historico = {}
 
     def extrair_cotacoes_reais(self):
-        logging.info("--- COLETANDO COTAÇÕES REAIS (CEPEA E BOLSAS) ---")
+        logging.info("--- COLETANDO COTAÇÕES REAIS (CEPEA) ---")
         
         # Criando um navegador blindado para contornar bloqueios do Cloudflare na Nuvem
         scraper = cloudscraper.create_scraper(browser={'browser': 'chrome', 'platform': 'windows', 'desktop': True})
         
-        # 1. Indicadores Oficiais CEPEA (Mercado Interno Base)
         try:
             r = scraper.get("https://www.cepea.esalq.usp.br/br/widget.aspx", timeout=15)
             soup = BeautifulSoup(r.text, 'html.parser')
@@ -615,87 +614,15 @@ class CepeaETL:
                     val = tds[0].text.strip()
                     if not val: continue
                     
-                    if 'soja' in nome: self.precos['soja_pr'] = f"R$ {val}"
-                    elif 'milho' in nome: self.precos['milho_sp'] = f"R$ {val}"
-                    elif 'boi' in nome and 'bezerro' not in nome: self.precos['boi_sp'] = f"R$ {val}"
-                    elif 'arábica' in nome: self.precos['cafe_sp'] = f"R$ {val}"
-                    elif 'conilon' in nome: self.precos['cafe_es'] = f"R$ {val}"
-                    elif 'algodão' in nome: 
-                        self.precos['algodao_mt'] = f"R$ {val}"
-                        self.precos['algodao_ba'] = f"R$ {val}"
-                    elif 'trigo' in nome: self.precos['trigo_pr'] = f"R$ {val}"
+                    if 'soja' in nome: self.precos['soja_br'] = f"R$ {val}"
+                    elif 'milho' in nome: self.precos['milho_br'] = f"R$ {val}"
+                    elif 'boi' in nome and 'bezerro' not in nome: self.precos['boi_br'] = f"R$ {val}"
+                    elif 'arábica' in nome: self.precos['cafe_arabica'] = f"R$ {val}"
+                    elif 'conilon' in nome: self.precos['cafe_conilon'] = f"R$ {val}"
+                    elif 'algodão' in nome: self.precos['algodao_br'] = f"R$ {val}"
+                    elif 'trigo' in nome: self.precos['trigo_br'] = f"R$ {val}"
         except Exception as e:
             logging.error(f"Erro ao acessar CEPEA: {e}")
-
-        # 2. Bolsas Internacionais e Praças Regionais (Notícias Agrícolas)
-        try:
-            r = scraper.get("https://www.noticiasagricolas.com.br/cotacoes/", timeout=30)
-            soup = BeautifulSoup(r.text, 'html.parser')
-            
-            for table in soup.find_all('table'):
-                # 1. Tenta pegar o título dentro do thead da própria tabela
-                thead = table.find('thead')
-                table_title = thead.text.lower().strip() if thead else ""
-                
-                # 2. Se a tabela não tiver thead, pega o h2/h3 anterior mais próximo
-                if not table_title or len(table_title) < 3:
-                    prev_title = table.find_previous(['h1', 'h2', 'h3'])
-                    table_title = prev_title.text.lower().strip() if prev_title else ""
-                    
-                for tr in table.find_all('tr'):
-                    tds = tr.find_all('td')
-                    if len(tds) >= 2:
-                        row_name = tds[0].text.strip().lower()
-                        val = tds[1].text.strip()
-                        
-                        if not val or val == '-': continue
-                        
-                        contexto = f"{table_title} {row_name}"
-                        
-                        if 'soja' in contexto:
-                            if ('cbot' in contexto or 'chicago' in contexto) and 'soja_cbot' not in self.precos:
-                                self.precos['soja_cbot'] = f"US$ {val}"
-                            elif 'prêmio' in contexto and 'soja_premio' not in self.precos:
-                                self.precos['soja_premio'] = f"US$ {val}"
-                            elif 'rio verde' in contexto and 'soja_go' not in self.precos:
-                                self.precos['soja_go'] = f"R$ {val}"
-                            elif 'rondonópolis' in contexto and 'soja_mt' not in self.precos:
-                                self.precos['soja_mt'] = f"R$ {val}"
-                                
-                        if 'milho' in contexto:
-                            if ('cbot' in contexto or 'chicago' in contexto) and 'milho_cbot' not in self.precos:
-                                self.precos['milho_cbot'] = f"US$ {val}"
-                            elif 'cascavel' in contexto and 'milho_pr' not in self.precos:
-                                self.precos['milho_pr'] = f"R$ {val}"
-                            elif 'sorriso' in contexto and 'milho_mt' not in self.precos:
-                                self.precos['milho_mt'] = f"R$ {val}"
-                                
-                        if 'café' in contexto or 'cafe' in contexto:
-                            if ('ny' in contexto or 'nova york' in contexto) and 'cafe_ny' not in self.precos:
-                                self.precos['cafe_ny'] = f"US$ {val}"
-                            elif 'londres' in contexto and 'cafe_lon' not in self.precos:
-                                self.precos['cafe_lon'] = f"US$ {val}"
-                                
-                        if 'algodão' in contexto or 'algodao' in contexto:
-                            if ('ny' in contexto or 'nova york' in contexto or 'ice' in contexto) and 'algodao_ny' not in self.precos:
-                                self.precos['algodao_ny'] = f"US$ {val}"
-                                
-                        if 'boi' in contexto:
-                            if 'goiânia' in contexto and 'boi_go' not in self.precos:
-                                self.precos['boi_go'] = f"R$ {val}"
-                            elif 'cuiabá' in contexto and 'boi_mt' not in self.precos:
-                                self.precos['boi_mt'] = f"R$ {val}"
-                                
-                        if 'trigo' in contexto:
-                            if ('cbot' in contexto or 'chicago' in contexto) and 'trigo_cbot' not in self.precos:
-                                self.precos['trigo_cbot'] = f"US$ {val}"
-                                
-                        if 'laranja' in contexto or 'citrus' in contexto:
-                            if 'indústria' in contexto and 'laranja_sp' not in self.precos:
-                                self.precos['laranja_sp'] = f"R$ {val}"
-
-        except Exception as e:
-            logging.error(f"Erro ao ler Bolsas/Praças extra: {e}")
 
     def get_preco(self, chave, default="R$ --,--"):
         return self.precos.get(chave, default)
@@ -729,6 +656,9 @@ class CepeaETL:
                     last_two = hist.sort_index().dropna(subset=['close_adj']).tail(2)
                     last_two_data = [(f"{str(idx.year)[-2:]}/{int(row['month']):02d}", row['close_adj']) for idx, row in last_two.iterrows()]
                     
+                    # Injeta o valor internacional super estável do Yahoo direto nos cards
+                    self.precos[f"{name}_int"] = f"{last_two.iloc[-1]['close_adj']:.2f}"
+
                     self.historico[name] = {
                         'avg_2023': avg_23 if not pd.isna(avg_23) else None,
                         'avg_2024': avg_24 if not pd.isna(avg_24) else None,
@@ -874,15 +804,12 @@ class CepeaETL:
                             <div class="commodity-card">
                                 <div class="commodity-header"><span>🌱 Soja</span></div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
-                                    <div class="price-row"><span>Paranaguá (PR)</span> <strong>{self.get_preco('soja_pr')} / sc 60kg</strong></div>
-                                    <div class="price-row"><span>Rio Verde (GO)</span> <strong>{self.get_preco('soja_go')} / sc 60kg</strong></div>
-                                    <div class="price-row"><span>Rondonópolis (MT)</span> <strong>{self.get_preco('soja_mt')} / sc 60kg</strong></div>
+                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
+                                    <div class="price-row"><span>Mercado Físico (Paraná)</span> <strong>{self.get_preco('soja_br')} / sc 60kg</strong></div>
                                 </div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('soja_cbot')} / bu</strong></div>
-                                    <div class="price-row"><span>Prêmio de Exportação</span> <strong>{self.get_preco('soja_premio')} / c</strong></div>
+                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ {self.get_preco('soja_int', '--,--')} / bu</strong></div>
                                 </div>
                                 {self.formatar_tendencia('soja', 'US$ / bu')}
                             </div>
@@ -891,14 +818,12 @@ class CepeaETL:
                             <div class="commodity-card">
                                 <div class="commodity-header"><span>🌽 Milho</span></div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
-                                    <div class="price-row"><span>Campinas (SP)</span> <strong>{self.get_preco('milho_sp')} / sc 60kg</strong></div>
-                                    <div class="price-row"><span>Cascavel (PR)</span> <strong>{self.get_preco('milho_pr')} / sc 60kg</strong></div>
-                                    <div class="price-row"><span>Sorriso (MT)</span> <strong>{self.get_preco('milho_mt')} / sc 60kg</strong></div>
+                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
+                                    <div class="price-row"><span>Mercado Físico (Campinas-SP)</span> <strong>{self.get_preco('milho_br')} / sc 60kg</strong></div>
                                 </div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
-                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>{self.get_preco('milho_cbot')} / bu</strong></div>
+                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ {self.get_preco('milho_int', '--,--')} / bu</strong></div>
                                 </div>
                                 {self.formatar_tendencia('milho', 'US$ / bu')}
                             </div>
@@ -907,14 +832,13 @@ class CepeaETL:
                             <div class="commodity-card">
                                 <div class="commodity-header"><span>☕ Café</span></div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
-                                    <div class="price-row"><span>Arábica - São Paulo</span> <strong>{self.get_preco('cafe_sp')} / sc 60kg</strong></div>
-                                    <div class="price-row"><span>Conilon - Espírito Santo</span> <strong>{self.get_preco('cafe_es')} / sc 60kg</strong></div>
+                                    <div class="section-title">Indicadores Nacionais (CEPEA)</div>
+                                    <div class="price-row"><span>Arábica (São Paulo)</span> <strong>{self.get_preco('cafe_arabica')} / sc 60kg</strong></div>
+                                    <div class="price-row"><span>Conilon (Espírito Santo)</span> <strong>{self.get_preco('cafe_conilon')} / sc 60kg</strong></div>
                                 </div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
-                                    <div class="price-row"><span>ICE (Arábica - NY)</span> <strong>{self.get_preco('cafe_ny')} / lb</strong></div>
-                                    <div class="price-row"><span>ICE (Robusta - Londres)</span> <strong>{self.get_preco('cafe_lon')} / ton</strong></div>
+                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>US$ {self.get_preco('cafe_int', '--,--')} / lb</strong></div>
                                 </div>
                                 {self.formatar_tendencia('cafe', 'US$ / lb')}
                             </div>
@@ -923,13 +847,12 @@ class CepeaETL:
                             <div class="commodity-card">
                                 <div class="commodity-header"><span>☁️ Algodão</span></div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
-                                    <div class="price-row"><span>Mato Grosso (MT)</span> <strong>{self.get_preco('algodao_mt')} / lp</strong></div>
-                                    <div class="price-row"><span>Bahia (BA)</span> <strong>{self.get_preco('algodao_ba')} / lp</strong></div>
+                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
+                                    <div class="price-row"><span>Mercado Físico (Brasil)</span> <strong>{self.get_preco('algodao_br')} / lp</strong></div>
                                 </div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
-                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>{self.get_preco('algodao_ny')} / lb</strong></div>
+                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
+                                    <div class="price-row"><span>ICE (Nova York)</span> <strong>US$ {self.get_preco('algodao_int', '--,--')} / lb</strong></div>
                                 </div>
                                 {self.formatar_tendencia('algodao', 'US$ / lb')}
                             </div>
@@ -938,42 +861,28 @@ class CepeaETL:
                             <div class="commodity-card">
                                 <div class="commodity-header"><span>🐂 Boi Gordo</span></div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
-                                    <div class="price-row"><span>São Paulo (SP)</span> <strong>{self.get_preco('boi_sp')} / @</strong></div>
-                                    <div class="price-row"><span>Campo Grande (GO)</span> <strong>{self.get_preco('boi_go')} / @</strong></div>
-                                    <div class="price-row"><span>Cuiabá (MT)</span> <strong>{self.get_preco('boi_mt')} / @</strong></div>
+                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
+                                    <div class="price-row"><span>Mercado Físico (São Paulo)</span> <strong>{self.get_preco('boi_br')} / @</strong></div>
                                 </div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
-                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>{self.get_preco('boi_cme', 'US$ --,--')} / lb</strong></div>
+                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
+                                    <div class="price-row"><span>CME (Live Cattle - EUA)</span> <strong>US$ {self.get_preco('boi_int', '--,--')} / lb</strong></div>
                                 </div>
                                 {self.formatar_tendencia('boi', 'US$ / lb')}
                             </div>
 
-                            <!-- Trigo & Aveia -->
+                            <!-- Trigo -->
                             <div class="commodity-card">
-                                <div class="commodity-header"><span>🌾 Trigo & Aveia</span></div>
+                                <div class="commodity-header"><span>🌾 Trigo</span></div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Interno (Média Mensal)</div>
-                                    <div class="price-row"><span>Trigo - Paraná (PR)</span> <strong>{self.get_preco('trigo_pr')} / ton</strong></div>
-                                    <div class="price-row"><span>Aveia - Rio G. do Sul (RS)</span> <strong>{self.get_preco('aveia_rs')} / ton</strong></div>
+                                    <div class="section-title">Indicador Nacional (CEPEA)</div>
+                                    <div class="price-row"><span>Mercado Físico (Paraná)</span> <strong>{self.get_preco('trigo_br')} / ton</strong></div>
                                 </div>
                                 <div class="price-section">
-                                    <div class="section-title">Mercado Internacional (Média Mensal)</div>
-                                    <div class="price-row"><span>CBOT (Trigo - EUA)</span> <strong>{self.get_preco('trigo_cbot')} / bu</strong></div>
+                                    <div class="section-title">Mercado Internacional (Bolsa)</div>
+                                    <div class="price-row"><span>CBOT (Chicago)</span> <strong>US$ {self.get_preco('trigo_int', '--,--')} / bu</strong></div>
                                 </div>
                                 {self.formatar_tendencia('trigo', 'US$ / bu')}
-                            </div>
-
-                            <!-- Frutas -->
-                            <div class="commodity-card">
-                                <div class="commodity-header"><span>🍊 Frutas (Destaques)</span></div>
-                                <div class="price-section">
-                                    <div class="section-title">Mercado Interno (Média Mensal - Atacado)</div>
-                                    <div class="price-row"><span>Laranja (Indústria - SP)</span> <strong>{self.get_preco('laranja_sp')} / cx 40.8kg</strong></div>
-                                    <div class="price-row"><span>Banana (Nanica - SP)</span> <strong>{self.get_preco('banana_sp')} / cx 22kg</strong></div>
-                                    <div class="price-row"><span>Maçã (Fuji - SC)</span> <strong>{self.get_preco('maca_sc')} / cx 18kg</strong></div>
-                                </div>
                             </div>
                             
                         </div>
