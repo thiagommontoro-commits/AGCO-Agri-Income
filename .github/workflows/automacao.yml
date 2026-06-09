@@ -2,8 +2,8 @@ name: Atualização Automática VBP
 
 on:
   schedule:
-    # Roda toda segunda-feira às 09:00 (Horário UTC)
-    - cron: '0 9 * * 1'
+    # Roda de segunda a sexta-feira às 09:00 (Horário UTC / 06:00 Horário de Brasília)
+    - cron: '0 9 * * 1-5'
   workflow_dispatch: # Adiciona um botão no GitHub para você rodar manualmente quando quiser
 
 permissions:
