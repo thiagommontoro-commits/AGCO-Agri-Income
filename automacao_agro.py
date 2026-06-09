@@ -533,7 +533,7 @@ class AgroETL:
                         </div>
 
                         <div class="kpi-grid">
-                            <div class="kpi-card total">
+                            <div class="kpi-card total" style="text-align: center; display: flex; flex-direction: column; justify-content: center;">
                                 <div class="kpi-title">Culturas Monitoradas</div>
                                 <div class="kpi-value">{total_culturas}</div>
                             </div>
@@ -878,6 +878,24 @@ class CepeaETL:
                         </div>
                     </div>
                 </div>
+                <script type="text/javascript">
+                    function googleTranslateElementInit() {{
+                        new google.translate.TranslateElement({{pageLanguage: 'pt', autoDisplay: false}}, 'google_translate_element');
+                    }}
+                    function doGTranslate(lang) {{
+                        if (lang === 'pt') {{
+                            document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                            location.reload();
+                            return;
+                        }}
+                        var select = document.querySelector('select.goog-te-combo');
+                        if (select) {{
+                            select.value = lang;
+                            select.dispatchEvent(new Event('change'));
+                        }}
+                    }}
+                </script>
+                <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
             </body>
             </html>
             ''')
