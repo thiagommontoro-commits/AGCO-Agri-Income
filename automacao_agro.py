@@ -497,10 +497,10 @@ class AgroETL:
                     .table-container {{ overflow-x: auto; border-radius: 8px; border: 1px solid var(--border-light); }}
                     table {{ width: 100%; border-collapse: collapse; font-size: 0.9em; background-color: #fff; }}
                     thead {{ background-color: var(--text-main); color: #ffffff; }}
-                    th {{ padding: 8px 6px; text-align: center; font-weight: 600; letter-spacing: 0px; text-transform: uppercase; font-size: 10.5px; white-space: nowrap; border: none; }}
-                    th:first-child {{ text-align: left; position: sticky; left: 0; background-color: var(--text-main); z-index: 2; }}
-                    td {{ padding: 6px 6px; text-align: center; border-bottom: 1px solid var(--border-light); color: #495057; font-variant-numeric: tabular-nums; border-top: none; border-left: none; border-right: none; font-size: 11.5px; }}
-                    td:first-child {{ text-align: left; font-weight: 600; color: var(--text-main); position: sticky; left: 0; background-color: #fff; border-right: 2px solid var(--border-light); z-index: 1; font-size: 11.5px; }}
+                    th {{ padding: 8px 3px; text-align: center; font-weight: 600; letter-spacing: 0px; text-transform: uppercase; font-size: 10px; white-space: nowrap; border: none; }}
+                    th:first-child {{ text-align: left; position: sticky; left: 0; background-color: var(--text-main); z-index: 2; padding-left: 10px; padding-right: 10px; }}
+                    td {{ padding: 6px 3px; text-align: center; border-bottom: 1px solid var(--border-light); color: #495057; font-variant-numeric: tabular-nums; border-top: none; border-left: none; border-right: none; font-size: 11px; }}
+                    td:first-child {{ text-align: left; font-weight: 600; color: var(--text-main); position: sticky; left: 0; background-color: #fff; border-right: 2px solid var(--border-light); z-index: 1; font-size: 11px; padding-left: 10px; padding-right: 10px; }}
                     tbody tr:hover td {{ background-color: #f8f9fa; }}
                     
                     /* Coluna IA - Layout Moderno com Letra Preta e Fundo Claro */
