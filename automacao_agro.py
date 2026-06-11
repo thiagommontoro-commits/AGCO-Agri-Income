@@ -312,24 +312,34 @@ class AgroETL:
             col_ant = colunas_ano_maximo[-2]
             v_atual = versoes[-1]
             v_ant = versoes[-2]
-            coluna_var_mes = f'Variação Mês ({v_atual} vs {v_ant})'
+            
+            v_atual_short = v_atual.replace(" - ", "-")[2:] if " - " in v_atual else v_atual
+            v_ant_short = v_ant.replace(" - ", "-")[2:] if " - " in v_ant else v_ant
+            coluna_var_mes = f'MOM Change ({v_atual_short} vs {v_ant_short})'
             
             df_exibicao[col_atual] = pd.to_numeric(df_exibicao[col_atual], errors='coerce').fillna(0)
             df_exibicao[col_ant] = pd.to_numeric(df_exibicao[col_ant], errors='coerce').fillna(0)
             df_exibicao[coluna_var_mes] = ((df_exibicao[col_atual] - df_exibicao[col_ant]) / df_exibicao[col_ant].replace(0, pd.NA)) * 100
         else:
-            coluna_var_mes = 'Variação Mês (%)'
+            coluna_var_mes = 'MOM Change (%)'
             df_exibicao[coluna_var_mes] = pd.NA
 
         # Variação vs Ano Anterior
         if colunas_ano_maximo and ano_anterior in df_exibicao.columns:
             col_atual = colunas_ano_maximo[-1]
             v_atual = versoes[-1]
-            coluna_var_ano = f'Variação Ano ({v_atual} vs {ano_anterior})'
+            
+            v_atual_short = v_atual.replace(" - ", "-")[2:] if " - " in v_atual else v_atual
+            ano_anterior_short = ano_anterior[2:] if len(ano_anterior) == 4 else ano_anterior
+            coluna_var_ano = f'YOY Change ({v_atual_short} vs {ano_anterior_short})'
+            
             df_exibicao[ano_anterior] = pd.to_numeric(df_exibicao[ano_anterior], errors='coerce').fillna(0)
             df_exibicao[coluna_var_ano] = ((df_exibicao[col_atual] - df_exibicao[ano_anterior]) / df_exibicao[ano_anterior].replace(0, pd.NA)) * 100
         else:
-            coluna_var_ano = f'Variação Ano ({ano_maximo} vs {ano_anterior})'
+            ano_maximo_short = ano_maximo[2:] if len(ano_maximo) == 4 else ano_maximo
+            ano_anterior_short = ano_anterior[2:] if len(ano_anterior) == 4 else ano_anterior
+            coluna_var_ano = f'YOY Change ({ano_maximo_short} vs {ano_anterior_short})'
+            
             df_exibicao[coluna_var_ano] = pd.NA
             
 
