@@ -579,3 +579,8 @@
 2026-06-19 12:44:06,359 - [ INFO ] - --- GERANDO PÁGINA DE COTAÇÕES INTERNACIONAIS ---
 2026-06-19 12:44:06,359 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
 2026-06-19 12:44:08,209 - [ INFO ] - Sucesso! Relatório de preços gerado em: /home/runner/work/AGCO-AgriIntel/AGCO-AgriIntel/precos.html
+2026-06-22 14:34:39,214 - [ INFO ] - --- INICIANDO WEB SCRAPING ---
+2026-06-22 14:34:59,361 - [ ERROR ] - Falha de conexão com o site: HTTPSConnectionPool(host='www.gov.br', port=443): Max retries exceeded with url: /agricultura/pt-br/assuntos/politica-agricola/valor-bruto-da-producao-agropecuaria-vbp (Caused by NewConnectionError("HTTPSConnection(host='www.gov.br', port=443): Failed to establish a new connection: [Errno 101] Network is unreachable"))
+2026-06-22 14:34:59,361 - [ INFO ] - --- GERANDO PÁGINA DE COTAÇÕES INTERNACIONAIS ---
+2026-06-22 14:34:59,361 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
+2026-06-22 14:35:00,343 - [ INFO ] - Sucesso! Relatório de preços gerado em: /home/runner/work/AGCO-AgriIntel/AGCO-AgriIntel/precos.html
