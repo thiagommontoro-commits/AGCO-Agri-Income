@@ -760,3 +760,7 @@
 2026-07-02 11:32:02,349 - [ INFO ] - --- GERANDO PÁGINA DE COTAÇÕES INTERNACIONAIS ---
 2026-07-02 11:32:02,350 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
 2026-07-02 11:32:03,140 - [ INFO ] - Sucesso! Relatório de preços gerado em: /home/runner/work/AGCO-Agri-Income/AGCO-Agri-Income/precos.html
+2026-07-03 11:29:34,334 - [ INFO ] - --- INICIANDO WEB SCRAPING ---
+2026-07-03 11:29:35,680 - [ INFO ] - --- GERANDO PÁGINA DE COTAÇÕES INTERNACIONAIS ---
+2026-07-03 11:29:35,681 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
+2026-07-03 11:29:36,531 - [ INFO ] - Sucesso! Relatório de preços gerado em: /home/runner/work/AGCO-Agri-Income/AGCO-Agri-Income/precos.html
