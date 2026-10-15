@@ -2460,3 +2460,8 @@
 2026-10-14 14:18:36,242 - [ INFO ] - --- GERANDO PÁGINA DE COTAÇÕES INTERNACIONAIS ---
 2026-10-14 14:18:36,242 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
 2026-10-14 14:18:38,050 - [ INFO ] - Sucesso! Relatório de preços gerado em: /home/runner/work/AGCO-Agri-Income/AGCO-Agri-Income/precos.html
+2026-10-15 13:53:43,935 - [ INFO ] - --- INICIANDO WEB SCRAPING ---
+2026-10-15 13:54:04,452 - [ ERROR ] - Falha de conexão com o site: HTTPSConnectionPool(host='www.gov.br', port=443): Read timed out. (read timeout=20)
+2026-10-15 13:54:04,452 - [ INFO ] - --- GERANDO PÁGINA DE COTAÇÕES INTERNACIONAIS ---
+2026-10-15 13:54:04,452 - [ INFO ] - --- COLETANDO HISTÓRICO DE TENDÊNCIAS (DESDE 2023) ---
+2026-10-15 13:54:05,429 - [ INFO ] - Sucesso! Relatório de preços gerado em: /home/runner/work/AGCO-Agri-Income/AGCO-Agri-Income/precos.html
